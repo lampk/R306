@@ -3,10 +3,10 @@ Type: Package
 Title: What the Package Does (Title Case)
 Version: 0.1
 Date: 2015-08-09
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: R306 member
+Maintainer: Phung Khanh Lam <phungkhanhlam@gmail.com>
+Description: R package includes useful R codes create by members of the biostatistics group at OUCRU (room 306)
+License: The MIT License (MIT)
 LazyData: TRUE
 Imports: survival,
     glmnet,
@@ -19,4 +19,5 @@ Imports: survival,
     glmulti,
     caret,
     ROCR,
-    c060
+    c060,
+    knitr
