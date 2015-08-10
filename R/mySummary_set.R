@@ -128,7 +128,7 @@ mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "
       align <- c("l", "r", "c", "r", "c")
     }
     result[2,] <- paste("_", result[2,], "_", sep = "_")
-    tab <- kable(result[-1,],
+    tab <- knitr::kable(result[-1,],
                  row.names = FALSE,
                  col.names = header1,
                  align = align,
