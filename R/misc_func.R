@@ -1,5 +1,5 @@
-#' @export
 # Matrix for cross-validation
+#' @export
 cv.mat <- function(n, B = 10, times = 10) {
   B_mat <- NULL
   for (i in (1:times)){
