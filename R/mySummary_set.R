@@ -149,3 +149,92 @@ mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "
     result
   }
 }
+
+## Special function
+#' @export
+mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA) {
+  
+  mySummary.onevar2 <- function(variable, group = NULL, continuous = NA){
+    if (is.na(continuous)) continuous <- ifelse(is.factor(variable) | length(unique(na.omit(variable))) <= 5, FALSE, TRUE)
+    
+    tmpfunc <- function(x, range) {
+      return((median(x, na.rm = TRUE) - range[1])/(range[2] - range[1]))
+    }
+    
+    mycont.summary <- function(variable,group) {
+      tmp <- range(variable, na.rm = TRUE)
+      if (is.null(group)) {
+        ngroup <- 1
+        n <- length(na.omit(variable))
+        summarystat.nice <- tmpfunc(variable, range = tmp)
+        
+      } else {
+        ngroup <- length(levels(group))
+        n <- c(by(variable, group, function(x) length(na.omit(x))))
+        summarystat.nice <- by(variable, group, tmpfunc, range = tmp)
+        
+      }
+      
+      result <- matrix(NA, ncol = ngroup * 2, nrow = 1)
+      result[1, seq(1, ncol(result), by = 2)] <- n
+      result[1, seq(2, ncol(result), by = 2)] <- unlist(summarystat.nice)
+      return(result)
+    }
+    
+    mycat.summary <- function(variable, group) {
+      if (is.null(group)) {
+        ngroup <- 1
+        ta <- table(variable)
+        ta.prop <- ta/sum(ta)
+        dim(ta) <- c(ngroup, length(ta))
+        colnames(ta) <- names(table(variable))
+      } else {
+        ngroup <- length(levels(group))
+        ta <- table(group, variable)
+        ta.prop <- unclass(ta/apply(ta, 1, sum))
+      }
+      
+      ta.nice <- matrix(ta.prop, nrow = nrow(ta), ncol = ncol(ta))
+      result <- matrix(NA, ncol = ngroup * 2, nrow = 1)
+      result[1, seq(1, ncol(result), by = 2)] <- apply(ta, 1, sum)
+      result[1, seq(2, ncol(result), by = 2)] <- t(ta.nice)[2,]
+      return(result)
+    }
+    
+    if (continuous) r <- mycont.summary(variable, group)
+    else r <- mycat.summary(variable, group)
+    return(r)
+  }
+  
+  dat <- model.frame(formula, data = data, na.action = NULL)
+  if (length(formula) == 2) {blvars <- dat; group <- factor(rep("All patients",nrow(data)),levels = "All patients"); gr.lev <- levels(group)}
+  else {
+    blvars <- dat[,-1]
+    if (is.null(ncol(blvars))) {
+      dim(blvars) <- c(length(blvars), 1)
+      colnames(blvars) <- as.character(formula[[3]])
+    }
+    group <- droplevels(factor(dat[,1]))
+    if (is.logical(dat[,1])) gr.lev <- as.character(unique(dat[,1])) else gr.lev <- levels(dat[,1])
+    if (pooledGroup) {
+      mylabels <- getlabel(blvars)
+      blvars <- rbind(blvars,blvars)
+      for (i in 1:ncol(blvars)) attr(blvars[,i], "label") <- mylabels[i]
+      group <- c(as.character(group),rep("All patients",nrow(data)))
+      group <- factor(group,levels = c("All patients",gr.lev))
+      gr.lev <- levels(group)
+    }
+  }
+  
+  gr.lev <- levels(group)
+  result <-  NULL
+  if (length(continuous) == 1) continuous <- rep(continuous, ncol(blvars))
+  
+  for (i in 1:ncol(blvars)) {
+    result.i <- mySummary.onevar2(blvars[, i], group, continuous = continuous[i])
+    result <- rbind(result, result.i)
+  }
+  colnames(result) <- c(rbind(rep("n", length(gr.lev)), paste(gr.lev, " (N=", table(group), ")", sep = "")))
+  rownames(result) <- getlabel(blvars)
+  return(result)
+}

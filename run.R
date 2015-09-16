@@ -5,3 +5,4 @@ sapply(pkg, function(x) devtools::use_package(x))
 
 ## build documentation
 devtools::document()
+
