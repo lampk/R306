@@ -184,13 +184,13 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
     mycat.summary <- function(variable, group) {
       if (is.null(group)) {
         ngroup <- 1
-        ta <- table(variable)
+        ta <- table(factor(variable, levels = c(FALSE, TRUE)))
         ta.prop <- ta/sum(ta)
         dim(ta) <- c(ngroup, length(ta))
         colnames(ta) <- names(table(variable))
       } else {
         ngroup <- length(levels(group))
-        ta <- table(group, variable)
+        ta <- table(group, factor(variable, levels = c(FALSE, TRUE)))
         ta.prop <- unclass(ta/apply(ta, 1, sum))
       }
       
