@@ -166,22 +166,29 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
       if (is.null(group)) {
         ngroup <- 1
         n <- length(na.omit(variable))
-        summarystat.nice <- tmpfunc(variable, range = tmp)
+        xscale <- tmpfunc(variable, range = tmp)
+        xmean <- mean(variable, na.rm = TRUE)
+        xvar  <- var(variable, na.rm = TRUE)
         
       } else {
         ngroup <- length(levels(group))
         n <- c(by(variable, group, function(x) length(na.omit(x))))
-        summarystat.nice <- by(variable, group, tmpfunc, range = tmp)
+        xscale <- by(variable, group, tmpfunc, range = tmp)
+        xmean <- by(variable, group, mean, na.rm = TRUE)
+        xvar <- by(variable, group, var, na.rm = TRUE)
         
       }
       
-      result <- matrix(NA, ncol = ngroup * 2, nrow = 1)
-      result[1, seq(1, ncol(result), by = 2)] <- n
-      result[1, seq(2, ncol(result), by = 2)] <- unlist(summarystat.nice)
+      result <- matrix(NA, ncol = ngroup * 4, nrow = 1)
+      result[1, seq(1, ncol(result), by = 4)] <- n
+      result[1, seq(2, ncol(result), by = 4)] <- unlist(xscale)
+      result[1, seq(3, ncol(result), by = 4)] <- unlist(xmean)
+      result[1, seq(4, ncol(result), by = 4)] <- unlist(xvar)
       return(result)
     }
     
     mycat.summary <- function(variable, group) {
+      
       if (is.null(group)) {
         ngroup <- 1
         ta <- table(factor(variable, levels = c(FALSE, TRUE)))
@@ -194,16 +201,30 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
         ta.prop <- unclass(ta/apply(ta, 1, sum))
       }
       
-      ta.nice <- matrix(ta.prop, nrow = nrow(ta), ncol = ncol(ta))
-      result <- matrix(NA, ncol = ngroup * 2, nrow = 1)
-      result[1, seq(1, ncol(result), by = 2)] <- apply(ta, 1, sum)
-      result[1, seq(2, ncol(result), by = 2)] <- t(ta.nice)[2,]
+      n <- apply(ta, 1, sum)
+      xmean <- ta.prop[, "TRUE"]
+      xvar <- xmean * (1 - xmean)/n
+      
+      result <- matrix(NA, ncol = ngroup * 4, nrow = 1)
+      result[1, seq(1, ncol(result), by = 4)] <- n
+      result[1, seq(2, ncol(result), by = 4)] <- xmean
+      result[1, seq(3, ncol(result), by = 4)] <- xmean
+      result[1, seq(4, ncol(result), by = 4)] <- xvar
       return(result)
     }
     
     if (continuous) r <- mycont.summary(variable, group)
     else r <- mycat.summary(variable, group)
-    return(r)
+    
+    ## calculate heterogeneity index
+    M <- r[, seq(3, ncol(r), by = 4)]
+    W <- 1/r[, seq(4, ncol(r), by = 4)]
+    Q <- sum(W * (M - sum(W * M)/sum(W))^2)
+    df <- ncol(r)/4 - 1
+    I2 <- pmax(100 * (Q - df)/Q, 0)
+    H <- 1/sqrt(1 - I2/100)
+    
+    return(cbind(r, Q, df, I2, H))
   }
   
   dat <- model.frame(formula, data = data, na.action = NULL)
@@ -234,7 +255,11 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
     result.i <- mySummary.onevar2(blvars[, i], group, continuous = continuous[i])
     result <- rbind(result, result.i)
   }
-  colnames(result) <- c(rbind(rep("n", length(gr.lev)), paste(gr.lev, " (N=", table(group), ")", sep = "")))
+  colnames(result) <- c(rbind(rep("n", length(gr.lev)), 
+                              paste(gr.lev, "scale", sep = "."),
+                              paste(gr.lev, "mean", sep = "."),
+                              paste(gr.lev, "var", sep = ".")),
+                        "Q", "df", "I2", "H")
   rownames(result) <- getlabel(blvars)
   return(result)
 }
