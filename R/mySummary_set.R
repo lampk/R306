@@ -152,9 +152,9 @@ mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "
 
 ## Special function
 #' @export
-mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA) {
+mySummary.simple <- function(formula, data, pooledGroup = TRUE, continuous = NA) {
   
-  mySummary.onevar2 <- function(variable, group = NULL, continuous = NA){
+  mySummary.onevar2 <- function(variable, group = NULL, continuous = NA, pooledGroup){
     if (is.na(continuous)) continuous <- ifelse(is.factor(variable) | length(unique(na.omit(variable))) <= 5, FALSE, TRUE)
     
     tmpfunc <- function(x, range) {
@@ -162,7 +162,7 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
     }
     
     mycont.summary <- function(variable,group) {
-      tmp <- range(variable, na.rm = TRUE)
+      tmp <- quantile(variable, probs = c(0.1, 0.9), na.rm = TRUE)
       if (is.null(group)) {
         ngroup <- 1
         n <- length(na.omit(variable))
@@ -191,23 +191,27 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
       
       if (is.null(group)) {
         ngroup <- 1
-        ta <- table(factor(variable, levels = c(FALSE, TRUE)))
+        ta <- ta2 <- table(factor(variable, levels = c(FALSE, TRUE)))
+        ta2[ta2 == 0] <- 0.5
         ta.prop <- ta/sum(ta)
+        ta2.prop <- ta2/sum(ta2)
         dim(ta) <- c(ngroup, length(ta))
         colnames(ta) <- names(table(variable))
       } else {
         ngroup <- length(levels(group))
-        ta <- table(group, factor(variable, levels = c(FALSE, TRUE)))
+        ta <- ta2 <- table(group, factor(variable, levels = c(FALSE, TRUE)))
+        ta2[ta2 == 0] <- 0.5
         ta.prop <- unclass(ta/apply(ta, 1, sum))
+        ta2.prop <- unclass(ta2/apply(ta2, 1, sum))
       }
       
       n <- apply(ta, 1, sum)
-      xmean <- ta.prop[, "TRUE"]
+      xmean <- ta2.prop[, "TRUE"]
       xvar <- xmean * (1 - xmean)/n
       
       result <- matrix(NA, ncol = ngroup * 4, nrow = 1)
       result[1, seq(1, ncol(result), by = 4)] <- n
-      result[1, seq(2, ncol(result), by = 4)] <- xmean
+      result[1, seq(2, ncol(result), by = 4)] <- ta.prop[, "TRUE"]
       result[1, seq(3, ncol(result), by = 4)] <- xmean
       result[1, seq(4, ncol(result), by = 4)] <- xvar
       return(result)
@@ -217,10 +221,12 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
     else r <- mycat.summary(variable, group)
     
     ## calculate heterogeneity index
-    M <- r[, seq(3, ncol(r), by = 4)]
-    W <- 1/r[, seq(4, ncol(r), by = 4)]
+    #browser()
+    if (pooledGroup) {r2 <- t(r[, -c(1:4)])}
+    M <- r2[, seq(3, ncol(r2), by = 4)]
+    W <- 1/r2[, seq(4, ncol(r2), by = 4)]
     Q <- sum(W * (M - sum(W * M)/sum(W))^2)
-    df <- ncol(r)/4 - 1
+    df <- ncol(r2)/4 - 1
     I2 <- pmax(100 * (Q - df)/Q, 0)
     H <- 1/sqrt(1 - I2/100)
     
@@ -252,11 +258,11 @@ mySummary.simple <- function(formula, data, pooledGroup = FALSE, continuous = NA
   if (length(continuous) == 1) continuous <- rep(continuous, ncol(blvars))
   
   for (i in 1:ncol(blvars)) {
-    result.i <- mySummary.onevar2(blvars[, i], group, continuous = continuous[i])
+    result.i <- mySummary.onevar2(blvars[, i], group, continuous = continuous[i], pooledGroup = pooledGroup)
     result <- rbind(result, result.i)
   }
   colnames(result) <- c(rbind(rep("n", length(gr.lev)), 
-                              paste(gr.lev, "scale", sep = "."),
+                              paste(gr.lev, " (N=", table(group), ")", sep = ""),
                               paste(gr.lev, "mean", sep = "."),
                               paste(gr.lev, "var", sep = ".")),
                         "Q", "df", "I2", "H")
