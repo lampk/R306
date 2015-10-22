@@ -12,10 +12,12 @@ myformat.pval <- function(p, cutoff = 0.001, type = 1){
       if (x >= cutoff) {
         if (type == 1) {
           formatC(x, digits, format = "f")
+        } else {
+          if (type == 2) {
+            format.pval(x, digits = 2, scientific = FALSE)
+          }
         }
-        if (type == 2) {
-          format.pval(x, digits = 2, scientific = FALSE)
-        }
+        
       } else {
         paste("<", formatC(cutoff, digits, format = "f"), sep = "")
       }
