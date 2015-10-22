@@ -1,5 +1,5 @@
 #' @export
-myformat.pval <- function(p, cutoff = 0.0001){
+myformat.pval <- function(p, cutoff = 0.001, type = 1){
   ## to format p value:
   ##- if <cutoff: report <cutoff; otherwise use only 2 decimal digits
   ## get number of digits: only work if the number of decimal places <15 (add 1 to avoid R mis-understanding)
@@ -10,7 +10,12 @@ myformat.pval <- function(p, cutoff = 0.0001){
       NA
     } else {
       if (x >= cutoff) {
-        format.pval(x, digits = 2, scientific = FALSE)
+        if (type == 1) {
+          formatC(x, digits, format = "f")
+        }
+        if (type == 2) {
+          format.pval(x, digits = 2, scientific = FALSE)
+        }
       } else {
         paste("<", formatC(cutoff, digits, format = "f"), sep = "")
       }

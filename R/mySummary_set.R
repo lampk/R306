@@ -12,7 +12,7 @@
 #'
 #' @return a matrix
 
-mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, contSummary = "med.IQR", test = FALSE, digits = 1){
+mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, contSummary = "med.IQR", test = FALSE, digits = 1, pcutoff = 0.0001){
   if (is.na(continuous)) continuous <- ifelse(is.factor(variable) | length(unique(na.omit(variable))) <= 5, FALSE, TRUE)
 
   mycont.summary <- function(variable,group,test,digits) {
@@ -31,7 +31,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result[1, seq(3, ncol(result), by = 2)] <- unlist(summarystat.nice)
     if (test == TRUE & !is.null(group)) {
       # overall Kruskal-Wallis test for group differences
-      pval <- myformat.pval(kruskal.test(variable ~ group)$p.value, cutoff = 0.0001)
+      pval <- myformat.pval(kruskal.test(variable ~ group)$p.value, cutoff = pcutoff)
       result <- cbind(result, pval)
     }
     result
@@ -58,7 +58,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result[1, seq(2, ncol(result), by = 2)] <- apply(ta, 1, sum) # n's
     if (test) {
       # Fisher's exact test for group differences
-      pval <- myformat.pval(fisher.test(ta)$p.value, cutoff = 0.0001)
+      pval <- myformat.pval(fisher.test(ta)$p.value, cutoff = pcutoff)
       result <- cbind(result, "")
       result[1,ngroup * 2 + 2] <- pval
     }
@@ -74,7 +74,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
 #' @export
 mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "med.IQR",
                              caption = NULL, kable = FALSE, test = FALSE, continuous = NA,
-                             digits = 1){
+                             digits = 1, pcutoff = 0.0001){
   # contSummary can be median (90% range) "med.90" or median (IQR) "med.IQR" or median (range) "med.range" or "mean.sd"
 
   if (pooledGroup&test){
@@ -116,7 +116,7 @@ mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "
   for (i in 1:ncol(blvars)){
     result.i <- mySummary.onevar(varname = ifelse(getlabel(blvars[, i]) != "", getlabel(blvars[, i]), getlabel(blvars)[i]),
                                  blvars[, i], group, contSummary = contSummary, test = test,
-                                 continuous = continuous[i], digits = digits[i])
+                                 continuous = continuous[i], digits = digits[i], pcutoff = pcutoff)
     result <- rbind(result, result.i)
   }
   rownames(result) <- rep("", nrow(result))
