@@ -269,3 +269,122 @@ mySummary.simple <- function(formula, data, pooledGroup = TRUE, continuous = NA)
   rownames(result) <- getlabel(blvars)
   return(result)
 }
+
+#' @export
+mySummary.simple2 <- function(formula, data, pooledGroup = TRUE, continuous = NA) {
+  require(metafor)
+  mySummary.onevar2 <- function(variable, group = NULL, continuous = NA, pooledGroup){
+    if (is.na(continuous)) continuous <- ifelse(is.factor(variable) | length(unique(na.omit(variable))) <= 5, FALSE, TRUE)
+    
+    tmpfunc <- function(x, range) {
+      return((median(x, na.rm = TRUE) - range[1])/(range[2] - range[1]))
+    }
+    
+    mycont.summary <- function(variable, group, pooledGroup) {
+      tmp <- quantile(variable, probs = c(0.1, 0.9), na.rm = TRUE)
+      if (is.null(group)) {
+        ngroup <- 1
+        n <- length(na.omit(variable))
+        xscale <- tmpfunc(variable, range = tmp)
+        xmean <- mean(variable, na.rm = TRUE)
+        xvar  <- var(variable, na.rm = TRUE)
+        
+      } else {
+        ngroup <- length(levels(group))
+        n <- c(by(variable, group, function(x) length(na.omit(x))))
+        xscale <- by(variable, group, tmpfunc, range = tmp)
+        xmean <- by(variable, group, mean, na.rm = TRUE)
+        xvar <- by(variable, group, var, na.rm = TRUE)
+        
+      }
+      
+      result <- matrix(NA, ncol = ngroup * 4, nrow = 1)
+      result[1, seq(1, ncol(result), by = 4)] <- n
+      result[1, seq(2, ncol(result), by = 4)] <- unlist(xscale)
+      result[1, seq(3, ncol(result), by = 4)] <- unlist(xmean)
+      result[1, seq(4, ncol(result), by = 4)] <- unlist(xvar)
+      
+      if (pooledGroup) {
+        rmai <- metafor::rma(measure = "MN", mi = as.numeric(unlist(xmean)[-1]), sdi = as.numeric(sqrt(unlist(xvar))[-1]), ni = n[-1], method = "DL")
+      } else {
+        rmai <- metafor::rma(measure = "MN", mi = as.numeric(unlist(xmean)), sdi = as.numeric(sqrt(unlist(xvar))), ni = n, method = "DL")
+      }
+      return(cbind(result, I2 = rmai$I2))
+    }
+    
+    mycat.summary <- function(variable, group, pooledGroup) {
+      
+      if (is.null(group)) {
+        ngroup <- 1
+        ta <- ta2 <- table(factor(variable, levels = c(FALSE, TRUE)))
+        ta2[ta2 == 0] <- 0.5
+        ta.prop <- ta/sum(ta)
+        ta2.prop <- ta2/sum(ta2)
+        dim(ta) <- c(ngroup, length(ta))
+        colnames(ta) <- names(table(variable))
+      } else {
+        ngroup <- length(levels(group))
+        ta <- ta2 <- table(group, factor(variable, levels = c(FALSE, TRUE)))
+        ta2[ta2 == 0] <- 0.5
+        ta.prop <- unclass(ta/apply(ta, 1, sum))
+        ta2.prop <- unclass(ta2/apply(ta2, 1, sum))
+      }
+      
+      n <- apply(ta, 1, sum)
+      xmean <- ta2.prop[, "TRUE"]
+      xvar <- xmean * (1 - xmean)/n
+      
+      result <- matrix(NA, ncol = ngroup * 4, nrow = 1)
+      result[1, seq(1, ncol(result), by = 4)] <- n
+      result[1, seq(2, ncol(result), by = 4)] <- ta.prop[, "TRUE"]
+      result[1, seq(3, ncol(result), by = 4)] <- xmean
+      result[1, seq(4, ncol(result), by = 4)] <- xvar
+      
+      if (pooledGroup) {
+        rmai <- metafor::rma(measure = "PR", xi = ta[, "TRUE"][-1], ni = n[-1], method = "DL")
+      } else {
+        rmai <- metafor::rma(measure = "PR", xi = ta[, "TRUE"], ni = n, method = "DL")
+      }
+      return(cbind(result, I2 = rmai$I2))
+    }
+    
+    if (continuous) return(mycont.summary(variable, group, pooledGroup))
+    else return(mycat.summary(variable, group, pooledGroup))
+  }
+  
+  dat <- model.frame(formula, data = data, na.action = NULL)
+  if (length(formula) == 2) {blvars <- dat; group <- factor(rep("All patients",nrow(data)),levels = "All patients"); gr.lev <- levels(group)}
+  else {
+    blvars <- dat[,-1]
+    if (is.null(ncol(blvars))) {
+      dim(blvars) <- c(length(blvars), 1)
+      colnames(blvars) <- as.character(formula[[3]])
+    }
+    group <- droplevels(factor(dat[,1]))
+    if (is.logical(dat[,1])) gr.lev <- as.character(unique(dat[,1])) else gr.lev <- levels(dat[,1])
+    if (pooledGroup) {
+      mylabels <- getlabel(blvars)
+      blvars <- rbind(blvars,blvars)
+      for (i in 1:ncol(blvars)) attr(blvars[,i], "label") <- mylabels[i]
+      group <- c(as.character(group),rep("All patients",nrow(data)))
+      group <- factor(group,levels = c("All patients",gr.lev))
+      gr.lev <- levels(group)
+    }
+  }
+  
+  gr.lev <- levels(group)
+  result <-  NULL
+  if (length(continuous) == 1) continuous <- rep(continuous, ncol(blvars))
+  
+  for (i in 1:ncol(blvars)) {
+    result.i <- mySummary.onevar2(blvars[, i], group, continuous = continuous[i], pooledGroup = pooledGroup)
+    result <- rbind(result, result.i)
+  }
+  colnames(result) <- c(rbind(rep("n", length(gr.lev)), 
+                              paste(gr.lev, " (N=", table(group), ")", sep = ""),
+                              paste(gr.lev, "mean", sep = "."),
+                              paste(gr.lev, "var", sep = ".")),
+                        "I2")
+  rownames(result) <- getlabel(blvars)
+  return(result)
+}
