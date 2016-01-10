@@ -5,10 +5,12 @@ Version: 0.1
 Date: 2015-08-09
 Author: R306 member
 Maintainer: Phung Khanh Lam <phungkhanhlam@gmail.com>
-Description: R package includes useful R codes create by members of the biostatistics group at OUCRU (room 306)
+Description: R package includes useful R codes create by members of the
+    biostatistics group at OUCRU (room 306)
 License: The MIT License (MIT)
 LazyData: TRUE
-Imports: survival,
+Imports:
+    survival,
     glmnet,
     penalized,
     ncvreg,
@@ -21,3 +23,4 @@ Imports: survival,
     ROCR,
     c060,
     knitr
+RoxygenNote: 5.0.0
