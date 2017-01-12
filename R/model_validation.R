@@ -76,7 +76,7 @@ classValidation <- function(model, data, type, scope=NULL,
   #-- Start the actual valdation
   cat("Start: \n")
   for (i in 1:B){
-    cat(i, "\r")
+    cat("\r", i)
     # datasets and response
     trainData <- data[rep(1:n, B_mat[,i]), ]
     if (test_set_method == "excluded") testData  <- data[B_mat[,i] == 0, ]

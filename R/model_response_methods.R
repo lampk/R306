@@ -134,8 +134,8 @@ fit.response.randomForest <- function(fitModel, data, ...) {
 }
 
 #' @describeIn fit.response Boosting
-fit.response.gbm <- function(fitModel, data, ...){
-  method <- ifelse(fitModel["cv.folds"] == 0, "OOB", "cv")
+fit.response.gbm <- function (fitModel, data, ...) {
+  method <- ifelse(fitModel["cv_folds"] == 0, "OOB", "cv")
   best.iter <- gbm::gbm.perf(fitModel, method = method, plot.it = FALSE)
-  gbm::predict.gbm(fitModel, data, n.trees = best.iter, type = "response")
+  gbm:::predict.GBMFit(fitModel, newdata = data, n.trees = best.iter, type = "response")
 }
