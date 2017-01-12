@@ -15,13 +15,15 @@ fit.method <- function(model, data, type = c('lm',
                                              "SCAD",
                                              'penalized',
                                              'stability',
+                                             'stability.step.AIC',
                                              'cox', 'cox.step.AIC', 'cox.step.BIC',
                                              'cox.best.AIC', 'cox.best.BIC',
                                              'glmnet.cox1', 'glmnet.cox2',
                                              'rpart1', 'rpart2',
                                              'randomForest',
                                              'gbm', 'gbm.cox',
-                                             'coxtv', 'coxtv.step.AIC', 'coxtv.step.BIC'), ...){
+                                             'coxtv', 'coxtv.step.AIC', 'coxtv.step.BIC'), 
+                       pi = 0.8, rep = 100, size = 0.5, seed = NULL, parallel = FALSE, ...){
   fit <- switch(type,
                 lm               = fit.method.lm(model, data, ...),
                 glm              = fit.method.glm(model, data, ...),
@@ -36,6 +38,7 @@ fit.method <- function(model, data, type = c('lm',
                 SCAD             = fit.method.scad(model, data, ...),
                 penalized        = fit.method.penalized(model, data, ...),
                 stability        = fit.method.stability(model, data, ...),
+                stability.step.AIC = fit.method.stab.step.AIC(model, data, pi = pi, B = rep, size = size, seed = seed, parallel = parallel, ...),
                 cox              = fit.method.cox(model, data, ...),
                 cox.step.AIC     = fit.method.cox.step(model, data, ...),
                 cox.step.BIC     = fit.method.cox.step(model, data, k = log(nrow(data)), ...),
@@ -78,6 +81,49 @@ fit.method.glm <- function(model, data, ...) {
 #' @describeIn fit.method Logistic regression with stepwise variable selection using AIC as stopping rule
 fit.method.glm.step.AIC <- function(model, data, ...) {
   step(glm(model, data, family = "binomial"), trace = 0, ...)
+}
+
+#' @describeIn fit.method Logistic regression with stepwise variable selection using AIC as stopping rule + stability selection
+fit.method.stab.step.AIC <- function(model, data, pi = 0.8, B = 100, size = 0.5, seed = NULL, parallel = FALSE, ...) {
+  # stability selection
+  n <- nrow(data)
+  if (!is.null(seed)) set.seed(seed)
+  id <- lapply(1:B, function(x) sample.int(n = n, size = round(size * n)))
+  #browser()
+  if (parallel) {
+    require(foreach)
+    require(doParallel)
+    registerDoParallel(detectCores() - 1)
+    res <- foreach(i = 1:B, .combine = list, .multicombine = TRUE)  %dopar%  {
+      datai <- data[id[[i]], ]
+      fiti <- fit.method.glm.step.AIC(model = model, data = datai, ...)
+      all.vars(formula(fiti))[-1]
+    }
+    stopImplicitCluster()
+  } else {
+    res <- vector("list", B)
+    ## get selected variables
+    for (i in (1:B)) {
+      cat("\r Step :", i)
+      datai <- data[id[[i]], ]
+      fiti <- fit.method.glm.step.AIC(model = model, data = datai, ...)
+      res[[i]] <- all.vars(formula(fiti))[-1]
+    }
+  }
+  
+  #browser()
+  ## derive output
+  phi <- table(unlist(res))/B
+  if (sum(phi >= pi) == 0) {
+    selected <- NULL
+  } else {selected <- names(phi[phi >= pi])}
+  if (is.null(selected)) cat("No variable was selected.\n")
+  
+  ## re-fit with glm
+  if (is.null(selected)) {
+    tmp <- 1
+  } else {tmp <- paste(selected, collapse = "+")}
+  return(fit.method.glm(model = update(model, paste(". ~", tmp)), data, ...))
 }
 
 #' @describeIn fit.method Logistic regression with stepwise variable selection using BIC as stopping rule
