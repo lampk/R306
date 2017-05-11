@@ -12,7 +12,8 @@
 #'
 #' @return a matrix
 
-mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, contSummary = "med.IQR", test = FALSE, digits = 1, pcutoff = 0.0001){
+mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, contSummary = "med.IQR", 
+                             test = FALSE, digits = 1, pcutoff = 0.0001, workspace = 1000000){
   if (is.na(continuous)) continuous <- ifelse(is.factor(variable) | length(unique(na.omit(variable))) <= 5, FALSE, TRUE)
 
   mycont.summary <- function(variable,group,test,digits) {
@@ -37,7 +38,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result
   }
 
-  mycat.summary <- function(variable, group, test, digits) {
+  mycat.summary <- function(variable, group, test, digits, workspace) {
     if (is.null(group)) {
       ngroup <- 1
       ta <- table(variable)
@@ -58,7 +59,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result[1, seq(2, ncol(result), by = 2)] <- apply(ta, 1, sum) # n's
     if (test) {
       # Fisher's exact test for group differences
-      pval <- myformat.pval(fisher.test(ta)$p.value, cutoff = pcutoff)
+      pval <- myformat.pval(fisher.test(ta, workspace = workspace)$p.value, cutoff = pcutoff)
       result <- cbind(result, "")
       result[1,ngroup * 2 + 2] <- pval
     }
@@ -66,7 +67,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
   }
 
   if (continuous) r <- mycont.summary(variable, group, test, digits)
-  else r <- mycat.summary(variable, group, test, digits)
+  else r <- mycat.summary(variable, group, test, digits, workspace)
   r[1, 1] <- varname
   r
 }
@@ -74,7 +75,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
 #' @export
 mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "med.IQR",
                              caption = NULL, kable = FALSE, test = FALSE, continuous = NA,
-                             digits = 1, pcutoff = 0.0001){
+                             digits = 1, pcutoff = 0.0001, workspace = 1000000){
   # contSummary can be median (90% range) "med.90" or median (IQR) "med.IQR" or median (range) "med.range" or "mean.sd"
 
   if (pooledGroup&test){
