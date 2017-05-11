@@ -69,7 +69,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
   }
 
   if (continuous) r <- mycont.summary(variable, group, test, digits)
-  else r <- mycat.summary(variable, group, test, digits, workspace)
+  else r <- mycat.summary(variable, group, test, digits, workspace, hybrid, simulate.p.value, B)
   r[1, 1] <- varname
   r
 }
