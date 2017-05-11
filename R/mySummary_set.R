@@ -13,7 +13,8 @@
 #' @return a matrix
 
 mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, contSummary = "med.IQR", 
-                             test = FALSE, digits = 1, pcutoff = 0.0001, workspace = 1000000,
+                             test = FALSE, digits = 1, pcutoff = 0.0001, 
+                             chisq.test = FALSE, correct = FALSE, workspace = 1000000,
                              hybrid = FALSE, simulate.p.value = FALSE, B = 2000){
   if (is.na(continuous)) continuous <- ifelse(is.factor(variable) | length(unique(na.omit(variable))) <= 5, FALSE, TRUE)
 
@@ -39,7 +40,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result
   }
 
-  mycat.summary <- function(variable, group, test, digits, workspace, hybrid, simulate.p.value, B) {
+  mycat.summary <- function(variable, group, test, digits, chisq.test, correct, workspace, hybrid, simulate.p.value, B) {
     if (is.null(group)) {
       ngroup <- 1
       ta <- table(variable)
@@ -60,8 +61,11 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result[1, seq(2, ncol(result), by = 2)] <- apply(ta, 1, sum) # n's
     if (test) {
       # Fisher's exact test for group differences
-      pval <- myformat.pval(fisher.test(ta, workspace = workspace, hybrid = hybrid, 
-                                        simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff)
+      pval <- switch(chisq.test,
+                     TRUE = myformat.pval(chisq.test(ta, correct = correct, 
+                                                     simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff),
+                     FALSE = myformat.pval(fisher.test(ta, workspace = workspace, hybrid = hybrid, 
+                                        simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff))
       result <- cbind(result, "")
       result[1,ngroup * 2 + 2] <- pval
     }
@@ -69,7 +73,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
   }
 
   if (continuous) r <- mycont.summary(variable, group, test, digits)
-  else r <- mycat.summary(variable, group, test, digits, workspace, hybrid, simulate.p.value, B)
+  else r <- mycat.summary(variable, group, test, digits, chisq.test, correct, workspace, hybrid, simulate.p.value, B)
   r[1, 1] <- varname
   r
 }
@@ -77,7 +81,7 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
 #' @export
 mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "med.IQR",
                              caption = NULL, kable = FALSE, test = FALSE, continuous = NA,
-                             digits = 1, pcutoff = 0.0001, workspace = 1000000,
+                             digits = 1, pcutoff = 0.0001, chisq.test = FALSE, correct = FALSE, workspace = 1000000,
                              hybrid = FALSE, simulate.p.value = FALSE, B = 2000){
   # contSummary can be median (90% range) "med.90" or median (IQR) "med.IQR" or median (range) "med.range" or "mean.sd"
 
@@ -146,7 +150,8 @@ mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "
                       "for continuous data._")
     if (test) footnote <- c(footnote,
                             "",
-                            "_p-values based on Kruskal-Wallis/Mann-Whitney U-test (continuous data) and Fisher's exact test (categorical data)._")
+                            paste0("_p-values based on Kruskal-Wallis/Mann-Whitney U-test (continuous data) and ",
+                                   ifelse(chisq.test == FALSE, "Fisher's exact test", "Chi-squared test"), " (categorical data)._"))
     ## output
     structure(c(tab, "", footnote), format = "markdown", class = "knitr_kable")
   } else {
