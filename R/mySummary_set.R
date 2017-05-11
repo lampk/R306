@@ -127,6 +127,8 @@ mySummary.allvar <- function(formula, data, pooledGroup = FALSE, contSummary = "
   for (i in 1:ncol(blvars)){
     result.i <- mySummary.onevar(varname = ifelse(getlabel(blvars[, i]) != "", getlabel(blvars[, i]), getlabel(blvars)[i]),
                                  blvars[, i], group, contSummary = contSummary, test = test,
+                                 chisq.test = chisq.test, correct = correct, workspace = workspace, 
+                                 hybrid = hybrid, simulate.p.value = simulate.p.value, B = B,
                                  continuous = continuous[i], digits = digits[i], pcutoff = pcutoff)
     result <- rbind(result, result.i)
   }
