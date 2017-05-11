@@ -61,10 +61,14 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     result[1, seq(2, ncol(result), by = 2)] <- apply(ta, 1, sum) # n's
     if (test) {
       # Fisher's exact test for group differences
-      pval <- ifelse(chisq.test == TRUE, myformat.pval(chisq.test(ta, correct = correct, 
-                                                                        simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff),
-                     myformat.pval(fisher.test(ta, workspace = workspace, hybrid = hybrid, 
-                                                     simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff))
+      if (chisq.test) {
+        pval <- myformat.pval(chisq.test(ta, correct = correct, 
+                                         simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff)
+      } else {
+        pval <- myformat.pval(fisher.test(ta, workspace = workspace, hybrid = hybrid, 
+                                          simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff)
+      }
+      
       result <- cbind(result, "")
       result[1,ngroup * 2 + 2] <- pval
     }
