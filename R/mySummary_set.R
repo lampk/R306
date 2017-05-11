@@ -62,9 +62,9 @@ mySummary.onevar <- function(varname, variable, group = NULL, continuous = NA, c
     if (test) {
       # Fisher's exact test for group differences
       pval <- switch(chisq.test,
-                     TRUE = myformat.pval(chisq.test(ta, correct = correct, 
+                     "TRUE" = myformat.pval(chisq.test(ta, correct = correct, 
                                                      simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff),
-                     FALSE = myformat.pval(fisher.test(ta, workspace = workspace, hybrid = hybrid, 
+                     "FALSE" = myformat.pval(fisher.test(ta, workspace = workspace, hybrid = hybrid, 
                                         simulate.p.value = simulate.p.value, B = B)$p.value, cutoff = pcutoff))
       result <- cbind(result, "")
       result[1,ngroup * 2 + 2] <- pval
