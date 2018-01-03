@@ -212,7 +212,7 @@ fit.method.glmnet <- function(model, data,
   out
 }
 
-#' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit
+#' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression)
 fit.method.glmnet.refit <- function(model, data,
                                     family = "binomial", lambda = NULL, nfolds = 10,
                                     type.measure = "deviance", standardize = TRUE, alpha = 1, ...){
@@ -243,7 +243,7 @@ fit.method.glmnet.refit <- function(model, data,
   new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
   
   # refit model
-  return(glm(formula = new.model, data = data, family = family))
+  return(glm(formula = new.model, data = data, family = "binomial"))
 }
 
 
