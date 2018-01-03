@@ -5,7 +5,9 @@
 \title{Summarise dataset}
 \usage{
 mySummary.onevar(varname, variable, group = NULL, continuous = NA,
-  contSummary = "med.IQR", test = FALSE, digits = 1, pcutoff = 1e-04)
+  contSummary = "med.IQR", test = FALSE, digits = 1, pcutoff = 1e-04,
+  chisq.test = FALSE, correct = FALSE, workspace = 1e+06,
+  hybrid = FALSE, simulate.p.value = FALSE, B = 2000)
 }
 \arguments{
 \item{continuous}{Independent variables are continuous variables?}
@@ -32,4 +34,3 @@ a matrix
 \description{
 Summarise dataset
 }
-

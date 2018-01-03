@@ -39,4 +39,3 @@ List of validation output
 \description{
 Validation of binary classification rule
 }
-

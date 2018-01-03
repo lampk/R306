@@ -10,7 +10,7 @@ fit.method <- function(model, data, type = c('lm',
                                              'glm', 'glm.step.AIC', 'glm.step.BIC',
                                              'glm.best.AIC', 'glm.best.BIC',
                                              'gam',
-                                             'glmnet1', 'glmnet2',
+                                             'glmnet1', 'glmnet2', 'glmnet.refit',
                                              "adaptiveLASSO",
                                              "SCAD",
                                              'penalized',
@@ -34,6 +34,7 @@ fit.method <- function(model, data, type = c('lm',
                 gam              = fit.method.gam(model, data, ...),
                 glmnet1          = fit.method.glmnet(model, data, ...),
                 glmnet2          = fit.method.glmnet(model, data, ...),
+                glmnet.refit     = fit.method.glmnet.refit(model, data, ...),
                 adaptiveLASSO    = fit.method.alasso(model, data, ...),
                 SCAD             = fit.method.scad(model, data, ...),
                 penalized        = fit.method.penalized(model, data, ...),
@@ -210,6 +211,41 @@ fit.method.glmnet <- function(model, data,
   out$model <- model
   out
 }
+
+#' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit
+fit.method.glmnet.refit <- function(model, data,
+                                    family = "binomial", lambda = NULL, nfolds = 10,
+                                    type.measure = "deviance", standardize = TRUE, alpha = 1, ...){
+  #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
+  
+  ## function to match varnames
+  match.varname <- function(varname, model) {
+    model.vars <- all.vars(model)
+    model.x <- gsub(pattern = " ", replacement = "", x = strsplit(as.character(model)[3], split = "[+]")[[1]])
+    tmp1 <- sapply(varname, function(x){paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
+    tmp2 <- sapply(model.x, function(x){paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
+    out <- names(tmp2)[tmp2 %in% tmp1] 
+    return(out)
+  }
+  
+  # define response and covariate
+  x <- model.matrix(model, data)[, -1]
+  if (family == "cox"){
+    y <- eval(parse(text = paste("with(data, as.matrix(", model[2], "))")))
+  } else {y <- unlist(model.frame(model, data)[1])}
+  
+  # fit glmnet model using 10-fold cross-validation to choose the best tuning parameter
+  glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, nfolds = nfolds, type.measure = type.measure, standardize = standardize, alpha = alpha, ...)
+  coefs <- coef(glmnet.fit, s = glmnet.fit$lambda.min)
+  
+  # get selected variables
+  selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
+  new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
+  
+  # refit model
+  return(glm(formula = new.model, data = data, family = family))
+}
+
 
 #' @describeIn fit.method Logistic regression with LASSO (using penalized)
 fit.method.penalized <- function(model, data, ...) {

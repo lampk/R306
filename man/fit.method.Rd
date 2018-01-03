@@ -2,43 +2,46 @@
 % Please edit documentation in R/model_fit_methods.R
 \name{fit.method}
 \alias{fit.method}
-\alias{fit.method.alasso}
-\alias{fit.method.cox}
-\alias{fit.method.cox.glmulti}
-\alias{fit.method.cox.glmulti.AIC}
-\alias{fit.method.cox.glmulti.BIC}
-\alias{fit.method.cox.step}
-\alias{fit.method.cox.step.AIC}
-\alias{fit.method.cox.step.BIC}
-\alias{fit.method.coxtv}
-\alias{fit.method.coxtv.step}
-\alias{fit.method.gam}
-\alias{fit.method.gbm}
-\alias{fit.method.glm}
-\alias{fit.method.glm.glmulti}
-\alias{fit.method.glm.glmulti.AIC}
-\alias{fit.method.glm.glmulti.BIC}
-\alias{fit.method.glm.step}
-\alias{fit.method.glm.step.AIC}
-\alias{fit.method.glm.step.BIC}
-\alias{fit.method.glmnet}
 \alias{fit.method.lm}
 \alias{fit.method.lm.step.AIC}
 \alias{fit.method.lm.step.BIC}
+\alias{fit.method.glm}
+\alias{fit.method.glm.step.AIC}
+\alias{fit.method.stab.step.AIC}
+\alias{fit.method.glm.step.BIC}
+\alias{fit.method.glm.step}
+\alias{fit.method.cox}
+\alias{fit.method.cox.step.AIC}
+\alias{fit.method.cox.step.BIC}
+\alias{fit.method.cox.step}
+\alias{fit.method.coxtv}
+\alias{fit.method.coxtv.step}
+\alias{fit.method.glmnet}
+\alias{fit.method.glmnet.refit}
 \alias{fit.method.penalized}
-\alias{fit.method.randomForest}
-\alias{fit.method.rpart1}
-\alias{fit.method.rpart2}
+\alias{fit.method.alasso}
 \alias{fit.method.scad}
 \alias{fit.method.stability}
+\alias{fit.method.gam}
+\alias{fit.method.rpart1}
+\alias{fit.method.rpart2}
+\alias{fit.method.randomForest}
+\alias{fit.method.gbm}
+\alias{fit.method.glm.glmulti.AIC}
+\alias{fit.method.glm.glmulti.BIC}
+\alias{fit.method.cox.glmulti.AIC}
+\alias{fit.method.cox.glmulti.BIC}
+\alias{fit.method.glm.glmulti}
+\alias{fit.method.cox.glmulti}
 \title{Methods to fit models}
 \usage{
 fit.method(model, data, type = c("lm", "glm", "glm.step.AIC", "glm.step.BIC",
-  "glm.best.AIC", "glm.best.BIC", "gam", "glmnet1", "glmnet2", "adaptiveLASSO",
-  "SCAD", "penalized", "stability", "cox", "cox.step.AIC", "cox.step.BIC",
-  "cox.best.AIC", "cox.best.BIC", "glmnet.cox1", "glmnet.cox2", "rpart1",
-  "rpart2", "randomForest", "gbm", "gbm.cox", "coxtv", "coxtv.step.AIC",
-  "coxtv.step.BIC"), ...)
+  "glm.best.AIC", "glm.best.BIC", "gam", "glmnet1", "glmnet2", "glmnet.refit",
+  "adaptiveLASSO", "SCAD", "penalized", "stability", "stability.step.AIC",
+  "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC", "cox.best.BIC",
+  "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2", "randomForest", "gbm",
+  "gbm.cox", "coxtv", "coxtv.step.AIC", "coxtv.step.BIC"), pi = 0.8,
+  rep = 100, size = 0.5, seed = NULL, parallel = FALSE, ...)
 
 fit.method.lm(model, data, ...)
 
@@ -49,6 +52,9 @@ fit.method.lm.step.BIC(model, data, ...)
 fit.method.glm(model, data, ...)
 
 fit.method.glm.step.AIC(model, data, ...)
+
+fit.method.stab.step.AIC(model, data, pi = 0.8, B = 100, size = 0.5,
+  seed = NULL, parallel = FALSE, ...)
 
 fit.method.glm.step.BIC(model, data, ...)
 
@@ -67,6 +73,10 @@ fit.method.coxtv(model, data, ...)
 fit.method.coxtv.step(model, data, ...)
 
 fit.method.glmnet(model, data, family = "binomial", lambda = NULL,
+  nfolds = 10, type.measure = "deviance", standardize = TRUE, alpha = 1,
+  ...)
+
+fit.method.glmnet.refit(model, data, family = "binomial", lambda = NULL,
   nfolds = 10, type.measure = "deviance", standardize = TRUE, alpha = 1,
   ...)
 
@@ -133,6 +143,8 @@ Methods to fit models
 
 \item \code{fit.method.glm.step.AIC}: Logistic regression with stepwise variable selection using AIC as stopping rule
 
+\item \code{fit.method.stab.step.AIC}: Logistic regression with stepwise variable selection using AIC as stopping rule + stability selection
+
 \item \code{fit.method.glm.step.BIC}: Logistic regression with stepwise variable selection using BIC as stopping rule
 
 \item \code{fit.method.glm.step}: Logistic regression with stepwise variable selection
@@ -150,6 +162,8 @@ Methods to fit models
 \item \code{fit.method.coxtv.step}: Cox regression with time-dependent variable using stepwise variable selection
 
 \item \code{fit.method.glmnet}: Logistic regression with LASSO (using glmnet)
+
+\item \code{fit.method.glmnet.refit}: Logistic regression with LASSO (using glmnet) and refit
 
 \item \code{fit.method.penalized}: Logistic regression with LASSO (using penalized)
 

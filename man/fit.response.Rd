@@ -2,26 +2,26 @@
 % Please edit documentation in R/model_response_methods.R
 \name{fit.response}
 \alias{fit.response}
+\alias{fit.response.lm}
+\alias{fit.response.glm}
 \alias{fit.response.cox}
 \alias{fit.response.coxtv}
-\alias{fit.response.gam}
-\alias{fit.response.gbm}
-\alias{fit.response.glm}
 \alias{fit.response.glmnet1}
 \alias{fit.response.glmnet2}
-\alias{fit.response.lm}
 \alias{fit.response.penalized}
-\alias{fit.response.randomForest}
-\alias{fit.response.rpart}
 \alias{fit.response.scad}
+\alias{fit.response.gam}
+\alias{fit.response.rpart}
+\alias{fit.response.randomForest}
+\alias{fit.response.gbm}
 \title{Methods to get response from fitted models}
 \usage{
 fit.response(fitModel, data, type = c("lm", "glm", "glm.step.AIC",
   "glm.step.BIC", "glm.best.AIC", "glm.best.BIC", "gam", "glmnet1", "glmnet2",
-  "adaptiveLASSO", "SCAD", "penalized", "stability", "cox", "cox.step.AIC",
-  "cox.step.BIC", "cox.best.AIC", "cox.best.BIC", "glmnet.cox1", "glmnet.cox2",
-  "rpart1", "rpart2", "randomForest", "gbm", "gbm.cox", "coxtv",
-  "coxtv.step.AIC", "coxtv.step.BIC"), ...)
+  "adaptiveLASSO", "SCAD", "penalized", "stability", "stability.step.AIC",
+  "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC", "cox.best.BIC",
+  "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2", "randomForest", "gbm",
+  "gbm.cox", "coxtv", "coxtv.step.AIC", "coxtv.step.BIC"), ...)
 
 fit.response.lm(fitModel, data, ...)
 
