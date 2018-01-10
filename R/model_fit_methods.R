@@ -221,7 +221,7 @@ fit.method.glmnet.refit <- function(model, data,
   ## function to match varnames
   match.varname <- function(varname, model) {
     model.vars <- all.vars(model)
-    model.x <- gsub(pattern = " ", replacement = "", x = strsplit(as.character(model)[3], split = "[+]")[[1]])
+    model.x <- gsub(pattern = " |\n", replacement = "", x = strsplit(as.character(model)[3], split = "[+]")[[1]])
     tmp1 <- sapply(varname, function(x){paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
     tmp2 <- sapply(model.x, function(x){paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
     out <- names(tmp2)[tmp2 %in% tmp1] 
