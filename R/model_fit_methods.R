@@ -215,7 +215,7 @@ fit.method.glmnet <- function(model, data,
 #' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression)
 fit.method.glmnet.refit <- function(model, data,
                                     family = "binomial", lambda = NULL, nfolds = 10,
-                                    type.measure = "deviance", standardize = TRUE, alpha = 1, ...){
+                                    type.measure = "deviance", standardize = TRUE, alpha = 1, krepeat = 100, ...){
   #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
   
   ## function to match varnames
@@ -235,8 +235,23 @@ fit.method.glmnet.refit <- function(model, data,
   } else {y <- unlist(model.frame(model, data)[1])}
   
   # fit glmnet model using 10-fold cross-validation to choose the best tuning parameter
-  glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, nfolds = nfolds, type.measure = type.measure, standardize = standardize, alpha = alpha, ...)
-  coefs <- coef(glmnet.fit, s = glmnet.fit$lambda.min)
+  ## to reduce randomness: https://stats.stackexchange.com/questions/97777/variablity-in-cv-glmnet-results
+  MSEs <- NULL
+  for (i in 1:krepeat){
+    cat("\r", i)
+    glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, 
+                                    nfolds = nfolds, type.measure = type.measure, standardize = standardize, 
+                                    alpha = alpha, ...)
+    if (is.null(MSEs)) {
+      MSEs <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+    } else {
+      MSEs <- merge(MSEs, data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm), by = "lambda", all = TRUE)
+    }
+  }
+  
+  MSEs <- MSEs[MSEs$lambda %in% glmnet.fit$lambda,] 
+  lambda.min <- MSEs$lambda[which.min(rowMeans(MSEs[,-1]))]
+  coefs <- coef(glmnet.fit, s = lambda.min)
   
   # get selected variables
   selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
