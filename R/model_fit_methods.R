@@ -240,6 +240,11 @@ fit.method.glmnet.refit <- function(model, data,
   
   # get selected variables
   selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
+  inter <- grepl(pattern = ":", x = selected.vars)
+  if (any(inter)) {
+    tmp <- selected.vars[inter]
+    selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
+  }
   new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
   
   # refit model
