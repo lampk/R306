@@ -242,10 +242,12 @@ fit.method.glmnet.refit <- function(model, data,
     glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, 
                                     nfolds = nfolds, type.measure = type.measure, standardize = standardize, 
                                     alpha = alpha, ...)
+    cvmi <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+    names(cvmi)[2] <- paste0("cvm", i)
     if (is.null(cvms)) {
-      cvms <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+      cvms <- cvmi
     } else {
-      cvms <- merge(cvms, data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm), by = "lambda", all = TRUE)
+      cvms <- merge(cvms, cvmi, by = "lambda", all = TRUE)
     }
   }
   
