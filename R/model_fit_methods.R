@@ -251,8 +251,8 @@ fit.method.glmnet.refit <- function(model, data,
   
   cvms <- cvms[cvms$lambda %in% glmnet.fit$lambda,]
   cvmmeans <- rowMeans(cvms[,-1], na.rm = TRUE)
-  cvmin <- min(cvmeans)
-  idmin <- cvmeans <= cvmin
+  cvmin <- min(cvmmeans)
+  idmin <- cvmmeans <= cvmin
   lambda.min <- max(cvms$lambda[idmin])
   coefs <- coef(glmnet.fit, s = lambda.min)
   
