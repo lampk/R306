@@ -236,21 +236,24 @@ fit.method.glmnet.refit <- function(model, data,
   
   # fit glmnet model using 10-fold cross-validation to choose the best tuning parameter
   ## to reduce randomness: https://stats.stackexchange.com/questions/97777/variablity-in-cv-glmnet-results
-  MSEs <- NULL
+  cvms <- NULL
   for (i in 1:krepeat){
     cat("\r", i)
     glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, 
                                     nfolds = nfolds, type.measure = type.measure, standardize = standardize, 
                                     alpha = alpha, ...)
-    if (is.null(MSEs)) {
-      MSEs <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+    if (is.null(cvms)) {
+      cvms <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
     } else {
-      MSEs <- merge(MSEs, data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm), by = "lambda", all = TRUE)
+      cvms <- merge(cvms, data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm), by = "lambda", all = TRUE)
     }
   }
   
-  MSEs <- MSEs[MSEs$lambda %in% glmnet.fit$lambda,] 
-  lambda.min <- MSEs$lambda[which.min(rowMeans(MSEs[,-1]))]
+  cvms <- cvms[cvms$lambda %in% glmnet.fit$lambda,]
+  cvmmeans <- rowMeans(cvms[,-1], na.rm = TRUE)
+  cvmin <- min(cvmeans)
+  idmin <- cvmeans <= cvmin
+  lambda.min <- max(cvms$lambda[idmin])
   coefs <- coef(glmnet.fit, s = lambda.min)
   
   # get selected variables
