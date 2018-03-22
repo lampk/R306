@@ -10,7 +10,7 @@ fit.method <- function(model, data, type = c('lm',
                                              'glm', 'glm.step.AIC', 'glm.step.BIC',
                                              'glm.best.AIC', 'glm.best.BIC',
                                              'gam',
-                                             'glmnet1', 'glmnet2', 'glmnet.refit',
+                                             'glmnet1', 'glmnet2', 'glmnet.refit', 'glmnet.refit.1se',
                                              "adaptiveLASSO",
                                              "SCAD",
                                              'penalized',
@@ -35,6 +35,7 @@ fit.method <- function(model, data, type = c('lm',
                 glmnet1          = fit.method.glmnet(model, data, ...),
                 glmnet2          = fit.method.glmnet(model, data, ...),
                 glmnet.refit     = fit.method.glmnet.refit(model, data, ...),
+                glmnet.refit.1se = fit.method.glmnet.refit.1se(model, data, ...),
                 adaptiveLASSO    = fit.method.alasso(model, data, ...),
                 SCAD             = fit.method.scad(model, data, ...),
                 penalized        = fit.method.penalized(model, data, ...),
@@ -268,6 +269,78 @@ fit.method.glmnet.refit <- function(model, data,
   new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
   
   # refit model
+  return(glm(formula = new.model, data = data, family = "binomial"))
+}
+
+#' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression), use 1-se
+fit.method.glmnet.refit.1se <- function (model, data, family = "binomial", lambda = NULL, nfolds = 10, 
+                                          type.measure = "deviance", standardize = TRUE, alpha = 1, 
+                                          krepeat = 100, ...) {
+  match.varname <- function(varname, model) {
+    model.vars <- all.vars(model)
+    model.x <- gsub(pattern = " |\n", replacement = "", x = strsplit(as.character(model)[3], 
+                                                                     split = "[+]")[[1]])
+    tmp1 <- sapply(varname, function(x) {
+      paste(as.numeric(sapply(model.vars, function(y) grepl(y, 
+                                                            x))), collapse = "")
+    })
+    tmp2 <- sapply(model.x, function(x) {
+      paste(as.numeric(sapply(model.vars, function(y) grepl(y, 
+                                                            x))), collapse = "")
+    })
+    out <- names(tmp2)[tmp2 %in% tmp1]
+    return(out)
+  }
+  x <- model.matrix(model, data)[, -1]
+  if (family == "cox") {
+    y <- eval(parse(text = paste("with(data, as.matrix(", 
+                                 model[2], "))")))
+  }
+  else {
+    y <- unlist(model.frame(model, data)[1])
+  }
+  cvms <- NULL
+  
+  #browser()
+  
+  for (i in 1:krepeat) {
+    cat("\r", i)
+    glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
+                                    lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
+                                    standardize = standardize, alpha = alpha, ...)
+    cvmi <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+    names(cvmi)[2] <- paste0("cvm", i)
+    if (is.null(cvms)) {
+      cvms <- cvmi
+    }
+    else {
+      cvms <- merge(cvms, cvmi, by = "lambda", all = TRUE)
+    }
+  }
+  
+  #browser()
+  
+  cvms <- merge(data.frame(lambda = glmnet.fit$lambda, cvsd = glmnet.fit$cvsd), 
+                cvms[cvms$lambda %in% glmnet.fit$lambda, ],
+                by = "lambda", all = TRUE)
+  cvmmeans <- rowMeans(cvms[, -c(1:2)], na.rm = TRUE)
+  cvmin <- min(cvmmeans, na.rm = TRUE)
+  idmin <- cvmmeans <= cvmin
+  lambda.min <- max(cvms$lambda[idmin], na.rm = TRUE)
+  semin <- (cvmmeans + cvms$cvsd)[idmin]
+  idmin <- cvmmeans <= semin
+  lambda.1se <- max(cvms$lambda[idmin], na.rm = TRUE)
+  coefs <- coef(glmnet.fit, s = lambda.1se)
+  selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 
+                                                                 1], model = model)
+  inter <- grepl(pattern = ":", x = selected.vars)
+  if (any(inter)) {
+    tmp <- selected.vars[inter]
+    selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, 
+                                                           function(x) strsplit(x, split = ":")))))
+  }
+  new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
+                                                            collapse = "+"))))
   return(glm(formula = new.model, data = data, family = "binomial"))
 }
 

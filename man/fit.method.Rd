@@ -18,6 +18,7 @@
 \alias{fit.method.coxtv.step}
 \alias{fit.method.glmnet}
 \alias{fit.method.glmnet.refit}
+\alias{fit.method.glmnet.refit.1se}
 \alias{fit.method.penalized}
 \alias{fit.method.alasso}
 \alias{fit.method.scad}
@@ -37,11 +38,12 @@
 \usage{
 fit.method(model, data, type = c("lm", "glm", "glm.step.AIC", "glm.step.BIC",
   "glm.best.AIC", "glm.best.BIC", "gam", "glmnet1", "glmnet2", "glmnet.refit",
-  "adaptiveLASSO", "SCAD", "penalized", "stability", "stability.step.AIC",
-  "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC", "cox.best.BIC",
-  "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2", "randomForest", "gbm",
-  "gbm.cox", "coxtv", "coxtv.step.AIC", "coxtv.step.BIC"), pi = 0.8,
-  rep = 100, size = 0.5, seed = NULL, parallel = FALSE, ...)
+  "glmnet.refit.1se", "adaptiveLASSO", "SCAD", "penalized", "stability",
+  "stability.step.AIC", "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC",
+  "cox.best.BIC", "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2",
+  "randomForest", "gbm", "gbm.cox", "coxtv", "coxtv.step.AIC",
+  "coxtv.step.BIC"), pi = 0.8, rep = 100, size = 0.5, seed = NULL,
+  parallel = FALSE, ...)
 
 fit.method.lm(model, data, ...)
 
@@ -78,7 +80,11 @@ fit.method.glmnet(model, data, family = "binomial", lambda = NULL,
 
 fit.method.glmnet.refit(model, data, family = "binomial", lambda = NULL,
   nfolds = 10, type.measure = "deviance", standardize = TRUE, alpha = 1,
-  ...)
+  krepeat = 100, ...)
+
+fit.method.glmnet.refit.1se(model, data, family = "binomial", lambda = NULL,
+  nfolds = 10, type.measure = "deviance", standardize = TRUE, alpha = 1,
+  krepeat = 100, ...)
 
 fit.method.penalized(model, data, ...)
 
@@ -163,7 +169,9 @@ Methods to fit models
 
 \item \code{fit.method.glmnet}: Logistic regression with LASSO (using glmnet)
 
-\item \code{fit.method.glmnet.refit}: Logistic regression with LASSO (using glmnet) and refit
+\item \code{fit.method.glmnet.refit}: Logistic regression with LASSO (using glmnet) and refit (only for logistic regression)
+
+\item \code{fit.method.glmnet.refit.1se}: Logistic regression with LASSO (using glmnet) and refit (only for logistic regression), use 1-se
 
 \item \code{fit.method.penalized}: Logistic regression with LASSO (using penalized)
 
