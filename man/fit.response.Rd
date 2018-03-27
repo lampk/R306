@@ -6,8 +6,10 @@
 \alias{fit.response.glm}
 \alias{fit.response.cox}
 \alias{fit.response.coxtv}
-\alias{fit.response.glmnet1}
-\alias{fit.response.glmnet2}
+\alias{fit.response.glmnet}
+\alias{fit.response.glmnet.1se}
+\alias{fit.response.glmnet.cv}
+\alias{fit.response.glmnet.boot}
 \alias{fit.response.penalized}
 \alias{fit.response.scad}
 \alias{fit.response.gam}
@@ -17,11 +19,12 @@
 \title{Methods to get response from fitted models}
 \usage{
 fit.response(fitModel, data, type = c("lm", "glm", "glm.step.AIC",
-  "glm.step.BIC", "glm.best.AIC", "glm.best.BIC", "gam", "glmnet1", "glmnet2",
-  "adaptiveLASSO", "SCAD", "penalized", "stability", "stability.step.AIC",
-  "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC", "cox.best.BIC",
-  "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2", "randomForest", "gbm",
-  "gbm.cox", "coxtv", "coxtv.step.AIC", "coxtv.step.BIC"), ...)
+  "glm.step.BIC", "glm.best.AIC", "glm.best.BIC", "gam", "glmnet", "glmnet.1se",
+  "glmnet.cv", "glmnet.boot", "adaptiveLASSO", "SCAD", "penalized", "stability",
+  "stability.step.AIC", "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC",
+  "cox.best.BIC", "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2",
+  "randomForest", "gbm", "gbm.cox", "coxtv", "coxtv.step.AIC",
+  "coxtv.step.BIC"), ...)
 
 fit.response.lm(fitModel, data, ...)
 
@@ -32,9 +35,13 @@ fit.response.cox(fitModel, data, ...)
 fit.response.coxtv(fitModel, data, restype = c("risk", "lp"), id,
   save.data = TRUE, t.hor, ...)
 
-fit.response.glmnet1(fitModel, data, ...)
+fit.response.glmnet(fitModel, data, ...)
 
-fit.response.glmnet2(fitModel, data, ...)
+fit.response.glmnet.1se(fitModel, data, ...)
+
+fit.response.glmnet.cv(fitModel, data, ...)
+
+fit.response.glmnet.boot(fitModel, data, ...)
 
 fit.response.penalized(fitModel, data, ...)
 
@@ -71,9 +78,13 @@ Methods to get response from fitted models
 
 \item \code{fit.response.coxtv}: Cox regression with time-dependent variable
 
-\item \code{fit.response.glmnet1}: GLM LASSO (using glmnet, choose the minimum lambda)
+\item \code{fit.response.glmnet}: GLM LASSO (using glmnet, choose the minimum lambda)
 
-\item \code{fit.response.glmnet2}: GLM LASSO (using glmnet, choose the minimum lambda within 1 se)
+\item \code{fit.response.glmnet.1se}: GLM LASSO (using glmnet, choose the minimum lambda within 1 se)
+
+\item \code{fit.response.glmnet.cv}: GLM LASSO (using glmnet, choose the minimum lambda)
+
+\item \code{fit.response.glmnet.boot}: GLM LASSO (using glmnet, choose the minimum lambda)
 
 \item \code{fit.response.penalized}: GLM LASSO (using penalized)
 
