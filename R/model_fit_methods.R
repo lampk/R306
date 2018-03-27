@@ -10,7 +10,7 @@ fit.method <- function(model, data, type = c('lm',
                                              'glm', 'glm.step.AIC', 'glm.step.BIC',
                                              'glm.best.AIC', 'glm.best.BIC',
                                              'gam',
-                                             'glmnet1', 'glmnet2', 'glmnet.refit', 'glmnet.refit.1se',
+                                             'glmnet', 'glmnet.1se', 'glmnet.cv', 'glmnet.boot',
                                              "adaptiveLASSO",
                                              "SCAD",
                                              'penalized',
@@ -32,10 +32,10 @@ fit.method <- function(model, data, type = c('lm',
                 glm.best.AIC     = fit.method.glm.glmulti(model, data, crit = "aic", ...),
                 glm.best.BIC     = fit.method.glm.glmulti(model, data, crit = "bic", ...),
                 gam              = fit.method.gam(model, data, ...),
-                glmnet1          = fit.method.glmnet(model, data, ...),
-                glmnet2          = fit.method.glmnet(model, data, ...),
-                glmnet.refit     = fit.method.glmnet.refit(model, data, ...),
-                glmnet.refit.1se = fit.method.glmnet.refit.1se(model, data, ...),
+                glmnet           = fit.method.glmnet(model, data, ...),
+                glmnet.1se       = fit.method.glmnet(model, data, ...),
+                glmnet.cv        = fit.method.glmnet.cv(model, data, ...),
+                glmnet.boot      = fit.method.glmnet.boot(model, data, ...),
                 adaptiveLASSO    = fit.method.alasso(model, data, ...),
                 SCAD             = fit.method.scad(model, data, ...),
                 penalized        = fit.method.penalized(model, data, ...),
@@ -214,95 +214,32 @@ fit.method.glmnet <- function(model, data,
 }
 
 #' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression)
-fit.method.glmnet.refit <- function(model, data,
-                                    family = "binomial", lambda = NULL, nfolds = 10,
-                                    type.measure = "deviance", standardize = TRUE, alpha = 1, krepeat = 100, ...){
+fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NULL, refit = TRUE, nfolds = 10, 
+                                  type.measure = "deviance", standardize = TRUE, alpha = 1, 
+                                  krepeat = 10, nse = 1, ...) {
   #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
   
   ## function to match varnames
   match.varname <- function(varname, model) {
     model.vars <- all.vars(model)
-    model.x <- gsub(pattern = " |\n", replacement = "", x = strsplit(as.character(model)[3], split = "[+]")[[1]])
-    tmp1 <- sapply(varname, function(x){paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
-    tmp2 <- sapply(model.x, function(x){paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
-    out <- names(tmp2)[tmp2 %in% tmp1] 
+    model.x <- attr(terms(model), "term.labels")
+    tmp1 <- sapply(varname, function(x) {paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
+    tmp2 <- sapply(model.x, function(x) {paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
+    out <- names(tmp2)[tmp2 %in% tmp1]
     return(out)
   }
   
   # define response and covariate
   x <- model.matrix(model, data)[, -1]
-  if (family == "cox"){
-    y <- eval(parse(text = paste("with(data, as.matrix(", model[2], "))")))
-  } else {y <- unlist(model.frame(model, data)[1])}
+  y <- unlist(model.frame(model, data)[1])
   
-  # fit glmnet model using 10-fold cross-validation to choose the best tuning parameter
+  ## pre-specify lambda
+  lambda.max <- glmnet::glmnet(x, y, family = family, standardize = standardize, alpha = alpha, nlambda = nlambda, ...)$lambda[1]
+  lambda <- seq(from = lambda.max, to = lambda.max * lambda.min.ratio, length = nlambda)
+  
+  # fit glmnet model using k-fold cross-validation to choose the best tuning parameter
   ## to reduce randomness: https://stats.stackexchange.com/questions/97777/variablity-in-cv-glmnet-results
   cvms <- NULL
-  for (i in 1:krepeat){
-    cat("\r", i)
-    glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, 
-                                    nfolds = nfolds, type.measure = type.measure, standardize = standardize, 
-                                    alpha = alpha, ...)
-    cvmi <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
-    names(cvmi)[2] <- paste0("cvm", i)
-    if (is.null(cvms)) {
-      cvms <- cvmi
-    } else {
-      cvms <- merge(cvms, cvmi, by = "lambda", all = TRUE)
-    }
-  }
-  
-  cvms <- cvms[cvms$lambda %in% glmnet.fit$lambda,]
-  cvmmeans <- rowMeans(cvms[,-1], na.rm = TRUE)
-  cvmin <- min(cvmmeans)
-  idmin <- cvmmeans <= cvmin
-  lambda.min <- max(cvms$lambda[idmin])
-  coefs <- coef(glmnet.fit, s = lambda.min)
-  
-  # get selected variables
-  selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
-  inter <- grepl(pattern = ":", x = selected.vars)
-  if (any(inter)) {
-    tmp <- selected.vars[inter]
-    selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
-  }
-  new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
-  
-  # refit model
-  return(glm(formula = new.model, data = data, family = "binomial"))
-}
-
-#' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression), use 1-se
-fit.method.glmnet.refit.1se <- function (model, data, family = "binomial", lambda = NULL, nfolds = 10, 
-                                          type.measure = "deviance", standardize = TRUE, alpha = 1, 
-                                          krepeat = 100, ...) {
-  match.varname <- function(varname, model) {
-    model.vars <- all.vars(model)
-    model.x <- gsub(pattern = " |\n", replacement = "", x = strsplit(as.character(model)[3], 
-                                                                     split = "[+]")[[1]])
-    tmp1 <- sapply(varname, function(x) {
-      paste(as.numeric(sapply(model.vars, function(y) grepl(y, 
-                                                            x))), collapse = "")
-    })
-    tmp2 <- sapply(model.x, function(x) {
-      paste(as.numeric(sapply(model.vars, function(y) grepl(y, 
-                                                            x))), collapse = "")
-    })
-    out <- names(tmp2)[tmp2 %in% tmp1]
-    return(out)
-  }
-  x <- model.matrix(model, data)[, -1]
-  if (family == "cox") {
-    y <- eval(parse(text = paste("with(data, as.matrix(", 
-                                 model[2], "))")))
-  }
-  else {
-    y <- unlist(model.frame(model, data)[1])
-  }
-  cvms <- NULL
-  
-  #browser()
-  
   for (i in 1:krepeat) {
     cat("\r", i)
     glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
@@ -318,32 +255,135 @@ fit.method.glmnet.refit.1se <- function (model, data, family = "binomial", lambd
     }
   }
   
-  #browser()
-  
   cvms <- merge(data.frame(lambda = glmnet.fit$lambda, cvsd = glmnet.fit$cvsd), 
                 cvms[cvms$lambda %in% glmnet.fit$lambda, ],
                 by = "lambda", all = TRUE)
-  cvmmeans <- rowMeans(cvms[, -c(1:2)], na.rm = TRUE)
+  cvmmeans <- rowMeans(cvms[, -c(1:2), drop = FALSE], na.rm = TRUE)
   cvmin <- min(cvmmeans, na.rm = TRUE)
   idmin <- cvmmeans <= cvmin
   lambda.min <- max(cvms$lambda[idmin], na.rm = TRUE)
-  semin <- (cvmmeans + cvms$cvsd)[idmin]
+  semin <- (cvmmeans + nse * cvms$cvsd)[idmin]
   idmin <- cvmmeans <= semin
-  lambda.1se <- max(cvms$lambda[idmin], na.rm = TRUE)
-  coefs <- coef(glmnet.fit, s = lambda.1se)
-  selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 
-                                                                 1], model = model)
-  inter <- grepl(pattern = ":", x = selected.vars)
-  if (any(inter)) {
-    tmp <- selected.vars[inter]
-    selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, 
-                                                           function(x) strsplit(x, split = ":")))))
+  lambda.final <- max(cvms$lambda[idmin], na.rm = TRUE)
+  
+  if (refit) {
+    coefs <- coef(glmnet.fit, s = lambda.final)
+    
+    # get selected variables
+    selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
+    inter <- grepl(pattern = ":", x = selected.vars)
+    if (any(inter)) {
+      tmp <- selected.vars[inter]
+      selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
+    }
+    new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
+                                                              collapse = "+"))))
+    # refit model
+    out <- glm(formula = new.model, data = data, family = "binomial")
+  } else {
+    out <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, nfolds = nfolds, type.measure = type.measure, standardize = standardize, alpha = alpha, ...)
+    out$model <- model
+    out$s <- lambda.final
   }
-  new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
-                                                            collapse = "+"))))
-  return(glm(formula = new.model, data = data, family = "binomial"))
+  return(out)
 }
 
+#' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression) ## use bootstrap
+fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = NULL, refit = TRUE, B = 10, 
+                                    type.measure = "deviance", standardize = TRUE, alpha = 1, 
+                                    krepeat = 10, nse = 1, nlambda = 100, lambda.min.ratio = 0.0001, ...) {
+  #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
+  
+  ## function to match varnames
+  match.varname <- function(varname, model) {
+    model.vars <- all.vars(model)
+    model.x <- attr(terms(model), "term.labels")
+    tmp1 <- sapply(varname, function(x) {paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
+    tmp2 <- sapply(model.x, function(x) {paste(as.numeric(sapply(model.vars, function(y) grepl(y, x))), collapse = "")})
+    out <- names(tmp2)[tmp2 %in% tmp1]
+    return(out)
+  }
+  
+  get.deviance <- function(y, p) {
+    ## modify y
+    nc <- dim(y)
+    if (is.null(nc)) {
+      y <- as.factor(y)
+      ntab <- table(y)
+      nc <- as.integer(length(ntab))
+      y <- diag(nc)[as.numeric(y), ]
+    }
+    ## modify p
+    p <- pmin(pmax(p, 1e-05), 1 - 1e-05)
+    
+    ## get deviance
+    lp <- y[, 1] * log(1 - p) + y[, 2] * log(p)
+    ly <- log(y)
+    ly[y == 0] <- 0
+    ly <- drop((y * ly) %*% c(1, 1))
+    return(2 * (ly - lp))
+  }
+  
+  # define response and covariate
+  x <- model.matrix(model, data)[, -1]
+  y <- unlist(model.frame(model, data)[1])
+  
+  # fit glmnet model using bootstrap to choose the best tuning parameter
+  n <- nrow(data)
+  B_mat <- rmultinom(B, size = n, prob = rep(1, n)/n)
+  
+  ## pre-specify lambda
+  lambda.max <- glmnet::glmnet(x, y, family = family, standardize = standardize, alpha = alpha, nlambda = nlambda, ...)$lambda[1]
+  lambda <- seq(from = lambda.max, to = lambda.max * lambda.min.ratio, length = nlambda)
+  
+  #browser()
+  
+  err <- cbind(lambda = lambda, matrix(ncol = B, nrow = length(lambda)))
+  for (i in 1:B) {
+    cat("\r", i)
+    ## fit
+    x.train <- x[rep(1:n, B_mat[,i]), , drop = FALSE]
+    y.train <- y[rep(1:n, B_mat[,i])]
+    glmnet.fit <- glmnet::glmnet(x.train, y.train, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
+    err[, i + 1] <- sapply(lambda, function(l) {
+      p <- plogis(glmnet::predict.glmnet(glmnet.fit, newx = x, s = l, type = "response"))
+      sum(get.deviance(y = y, p = p))
+    })
+  }
+  #browser()
+  errmeans <- rowMeans(err[, -1, drop = FALSE], na.rm = TRUE)
+  errse <- apply(err[, -1, drop = FALSE], 1, function(x){
+    sd(x)/sqrt(B)
+  })
+  
+  errmin <- min(errmeans, na.rm = TRUE)
+  idmin <- errmeans <= errmin
+  lambda.min <- max(lambda[idmin], na.rm = TRUE)
+  semin <- (errmeans + nse * errse)[idmin]
+  idmin <- errmeans <= semin
+  lambda.final <- max(lambda[idmin], na.rm = TRUE)
+  
+  if (refit) {
+    coefs <- coef(glmnet.fit, s = lambda.final)
+    
+    # get selected variables
+    selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
+    inter <- grepl(pattern = ":", x = selected.vars)
+    if (any(inter)) {
+      tmp <- selected.vars[inter]
+      selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
+    }
+    new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
+                                                              collapse = "+"))))
+    # refit model
+    out <- glm(formula = new.model, data = data, family = "binomial")
+  } else {
+    out <- glmnet::glmnet(x, y, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
+    out$model <- model
+    out$s <- lambda.final
+  }
+  return(out)
+}
 
 #' @describeIn fit.method Logistic regression with LASSO (using penalized)
 fit.method.penalized <- function(model, data, ...) {

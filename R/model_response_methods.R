@@ -10,7 +10,7 @@ fit.response <- function(fitModel, data, type = c('lm',
                                                   'glm', 'glm.step.AIC', 'glm.step.BIC',
                                                   'glm.best.AIC', 'glm.best.BIC',
                                                   'gam',
-                                                  'glmnet1', 'glmnet2',
+                                                  'glmnet', 'glmnet.1se', 'glmnet.cv', 'glmnet.boot',
                                                   "adaptiveLASSO", "SCAD",
                                                   'penalized',
                                                   'stability',
@@ -31,8 +31,10 @@ fit.response <- function(fitModel, data, type = c('lm',
                      glm.best.AIC     = fit.response.glm(fitModel, data, ...),
                      glm.best.BIC     = fit.response.glm(fitModel, data, ...),
                      gam              = fit.response.gam(fitModel, data, ...),
-                     glmnet1          = fit.response.glmnet1(fitModel, data, ...),
-                     glmnet2          = fit.response.glmnet2(fitModel, data, ...),
+                     glmnet           = fit.response.glmnet(fitModel, data, ...),
+                     glmnet.1se       = fit.response.glmnet.1se(fitModel, data, ...),
+                     glmnet.cv        = fit.response.glmnet.cv(fitModel, data, ...),
+                     glmnet.boot      = fit.response.glmnet.boot(fitModel, data, ...),
                      adaptiveLASSO    = fit.response.glmnet1(fitModel, data, ...),
                      SCAD             = fit.response.scad(fitModel, data, ...),
                      penalized        = fit.response.penalized(fitModel, data, ...),
@@ -101,13 +103,23 @@ fit.response.coxtv <- function(fitModel, data, restype = c("risk", "lp"), id, sa
 }
 
 #' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda)
-fit.response.glmnet1 <- function(fitModel, data, ...){
+fit.response.glmnet <- function(fitModel, data, ...){
   glmnet::predict.cv.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = "lambda.min", ...)
 }
 
 #' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda within 1 se)
-fit.response.glmnet2 <- function(fitModel, data, ...){
+fit.response.glmnet.1se <- function(fitModel, data, ...){
   glmnet::predict.cv.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = "lambda.1se", ...)
+}
+
+#' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda)
+fit.response.glmnet.cv <- function(fitModel, data, ...){
+  glmnet::predict.cv.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...)
+}
+
+#' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda)
+fit.response.glmnet.boot <- function(fitModel, data, ...){
+  glmnet::predict.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...)
 }
 
 #' @describeIn fit.response GLM LASSO (using penalized)
