@@ -216,7 +216,7 @@ fit.method.glmnet <- function(model, data,
 #' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression)
 fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NULL, refit = TRUE, nfolds = 10, 
                                   type.measure = "deviance", standardize = TRUE, alpha = 1, 
-                                  krepeat = 10, nse = 1, ...) {
+                                  krepeat = 10, nse = 1, nlambda = 100, lambda.min.ratio = 0.0001, ...) {
   #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
   
   ## function to match varnames

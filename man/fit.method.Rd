@@ -80,7 +80,8 @@ fit.method.glmnet(model, data, family = "binomial", lambda = NULL,
 
 fit.method.glmnet.cv(model, data, family = "binomial", lambda = NULL,
   refit = TRUE, nfolds = 10, type.measure = "deviance",
-  standardize = TRUE, alpha = 1, krepeat = 10, nse = 1, ...)
+  standardize = TRUE, alpha = 1, krepeat = 10, nse = 1, nlambda = 100,
+  lambda.min.ratio = 1e-04, ...)
 
 fit.method.glmnet.boot(model, data, family = "binomial", lambda = NULL,
   refit = TRUE, B = 10, type.measure = "deviance", standardize = TRUE,
