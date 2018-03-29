@@ -289,9 +289,9 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
 }
 
 #' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression) ## use bootstrap
-fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = NULL, refit = TRUE, B = 10, 
+fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = NULL, refit = TRUE, krepeat = 100, 
                                     type.measure = "deviance", standardize = TRUE, alpha = 1, 
-                                    krepeat = 10, nse = 1, nlambda = 100, lambda.min.ratio = 0.0001, ...) {
+                                    nse = 1, nlambda = 100, lambda.min.ratio = 0.0001, parallel = FALSE, ...) {
   #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
   
   ## function to match varnames
@@ -329,31 +329,47 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
   y <- unlist(model.frame(model, data)[1])
   
   # fit glmnet model using bootstrap to choose the best tuning parameter
-  n <- nrow(data)
-  B_mat <- rmultinom(B, size = n, prob = rep(1, n)/n)
+  m <- nrow(data)
+  boot_mat <- rmultinom(krepeat, size = m, prob = rep(1, m)/m)
   
   ## pre-specify lambda
   lambda.max <- glmnet::glmnet(x, y, family = family, standardize = standardize, alpha = alpha, nlambda = nlambda, ...)$lambda[1]
   lambda <- seq(from = lambda.max, to = lambda.max * lambda.min.ratio, length = nlambda)
   
-  #browser()
-  
-  err <- cbind(lambda = lambda, matrix(ncol = B, nrow = length(lambda)))
-  for (i in 1:B) {
-    cat("\r", i)
-    ## fit
-    x.train <- x[rep(1:n, B_mat[,i]), , drop = FALSE]
-    y.train <- y[rep(1:n, B_mat[,i])]
-    glmnet.fit <- glmnet::glmnet(x.train, y.train, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
-    err[, i + 1] <- sapply(lambda, function(l) {
-      p <- plogis(glmnet::predict.glmnet(glmnet.fit, newx = x, s = l, type = "response"))
-      sum(get.deviance(y = y, p = p))
-    })
+  if (parallel) {
+    require(doParallel)
+    cl <- makeCluster(detectCores())
+    registerDoParallel(cl)
+    err <- foreach(i = 1:krepeat, .combine = cbind) %dopar% {
+      x.train <- x[rep(1:n, boot_mat[,i]), , drop = FALSE]
+      y.train <- y[rep(1:n, boot_mat[,i])]
+      glmnet.fit <- glmnet::glmnet(x.train, y.train, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
+      sapply(lambda, function(l) {
+        p <- plogis(glmnet::predict.glmnet(glmnet.fit, newx = x, s = l, type = "response"))
+        sum(get.deviance(y = y, p = p))
+      })
+    }
+    stopCluster(cl)
+    err <- cbind(lambda = lambda, err)
+  } else {
+    err <- cbind(lambda = lambda, matrix(ncol = krepeat, nrow = length(lambda)))
+    for (i in 1:krepeat) {
+      cat("\r", i)
+      ## fit
+      x.train <- x[rep(1:m, boot_mat[,i]), , drop = FALSE]
+      y.train <- y[rep(1:m, boot_mat[,i])]
+      glmnet.fit <- glmnet::glmnet(x.train, y.train, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
+      err[, i + 1] <- sapply(lambda, function(l) {
+        p <- plogis(glmnet::predict.glmnet(glmnet.fit, newx = x, s = l, type = "response"))
+        sum(get.deviance(y = y, p = p))
+      })
+    }
   }
+  
   #browser()
   errmeans <- rowMeans(err[, -1, drop = FALSE], na.rm = TRUE)
   errse <- apply(err[, -1, drop = FALSE], 1, function(x){
-    sd(x)/sqrt(B)
+    sd(x)/sqrt(krepeat)
   })
   
   errmin <- min(errmeans, na.rm = TRUE)
@@ -373,8 +389,7 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
       tmp <- selected.vars[inter]
       selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
     }
-    new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
-                                                              collapse = "+"))))
+    new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
     # refit model
     out <- glm(formula = new.model, data = data, family = "binomial")
   } else {

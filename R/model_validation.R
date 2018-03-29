@@ -135,3 +135,161 @@ classValidation <- function(model, data, type, scope=NULL,
   # return result
   result
 }
+
+#' @param model Model's formula
+#' @param data Data to fit and assess model performance
+#' @param type Type of statistical model
+#' @param scope Scope in stepwise variable selection
+#' @param validation_method "cv" (cross-validation) or "bootstrap"
+#' @param B number of bootstrap samples / B-fold cross-validation
+#' @param B_mat Data matrix for cross-validation
+#' @param test_set_method How is the test set defined (either "all" -> use original dataset as test data (default for bootstrap), or "excluded" -> use patients excluded from cv/bootstrap sample as test data)
+#' @param show_selected_coef If TRUE, show the selected coefficients (only for glm's with model selection)
+#' @param criteria
+#' @param roc If TRUE, true positive rates corresponding to false positive rates given in argument fpr are also evaluated and cv/bootstrap corrected
+#' @param fpr
+#' @param ... Other parameters for fit_method and fit_response
+#'
+#' @return List of validation output
+#' @export
+classValidation.new <- function(model, data, type, scope=NULL,
+                                validation_method = c("bootstrap", "cv"), B = NULL, B_mat = NULL, doParallel = FALSE,
+                                test_set_method = ifelse(validation_method == "bootstrap", "all", "excluded"),
+                                show_selected_coef = F, criteria = c(Brier, c_index, calib), ...){
+  if (length(validation_method) > 1) {
+    validation_method <- "cv"
+    cat("Validation method is cross-validation!!! \n")
+  }
+  
+  n <- nrow(data)
+  #-- checks
+  if (is.null(B) && is.null(B_mat)) stop("Either argument B or B_mat must be provided")
+  if ((!is.null(B)) && (!is.null(B_mat)) && (ncol(B_mat) != B)) stop("Arguments B and B_mat incompatible")
+  #-- Create B and B_mat (containing selected observations in each bootstrap/cv sample)
+  if (is.null(B)) B <- ncol(B_mat)
+  if (is.null(B_mat)){
+    if (validation_method == "bootstrap") B_mat <- rmultinom(B, size = n, prob = rep(1,n)/n)
+    if (validation_method == "cv"){
+      which.group <- sample(rep(1:B, ceiling(n/B))[1:n], n, replace = F)
+      B_mat <- matrix(NA, nrow = n, ncol = B)
+      for (i in 1:B) B_mat[,i] <- as.numeric(which.group != i)
+    }
+  }
+  
+  if (show_selected_coef == T){
+    names.allcov <- colnames(model.matrix(model, data = data)) #includes intercept (is removed at the end)
+  }
+  
+  fitted.orig <- fit.response(fit.method(model, data, type, ...), data, type, ...)
+  y.orig <- as.numeric(model.response(model.frame(update(model,.~1), data)))
+  # (note: "update(model,.~1)" instead of "model" is necessary, because model.frame gives an error otherwise for gam's with model terms s(.)
+  perf.orig <- myaccuracy(fitted.orig, y.orig, criteria)
+  
+  # aggrageted indices
+  indices <- matrix(nrow = length(perf.orig), ncol = 5)
+  rownames(indices) <- names(perf.orig)
+  colnames(indices) <- c("index.orig", "training", "test", "optimism", "index.corrected")
+  indices[,1] <- perf.orig
+  
+  #-- Start the actual valdation
+  if (doParallel) {
+    require(doParallel)
+    cl <- makeCluster(detectCores())
+    registerDoParallel(cl)
+    res <- foreach(i = 1:B, .packages = "R306") %dopar% {
+      # datasets and response
+      trainData <- data[rep(1:n, B_mat[,i]), ]
+      if (test_set_method == "excluded") testData  <- data[B_mat[,i] == 0, ]
+      if (test_set_method == "all") testData  <- data
+      y.train <- as.numeric(model.response(model.frame(update(model, .~1), trainData)))
+      y.test <- as.numeric(model.response(model.frame(update(model, .~1), testData)))
+      # Predicted responses
+      fitModel <- fit.method(model, data= trainData, type, ...)
+      fitted.risk.train <- fit.response(fitModel, data = trainData, type, ...)
+      fitted.risk.test <- fit.response(fitModel, data = testData, type, ...)
+      # accuracy measures
+      indices.resample.i <- c(myaccuracy(fitted.risk.train, y.train, criteria),
+                              myaccuracy(fitted.risk.test, y.test, criteria))
+      
+      if (show_selected_coef){
+        selectedVars.i <- matrix(rep(NA, 3), dimnames = list(NULL, num.allcov), nrow = 1)
+        selectedVars.i[, colnames(model.matrix(fitModel$formula, data = data))] <- 1
+        out <- list(indices.resample.i, selectedVars.i)
+      } else {
+        out <- indices.resample.i
+      }
+      ## return
+      return(out)
+    }
+    
+    if (show_selected_coef) {
+      indices.resample <- do.call(rbind, lapply(res, function(x){x[[1]]}))
+      selectedVars <- do.call(rbind, lapply(res, function(x){x[[2]]}))
+    } else {
+      indices.resample <- do.call(rbind, res)
+    }
+    
+    colnames(indices.resample) <- c(paste(names(perf.orig), "train"),
+                                    paste(names(perf.orig), "test"))
+    stopCluster(cl)
+    
+  } else {
+    # indices for resampled data
+    indices.resample <- matrix(ncol = length(perf.orig)*2, nrow = B)
+    colnames(indices.resample) <- c(paste(names(perf.orig), "train"),
+                                    paste(names(perf.orig), "test"))  
+    
+    if (show_selected_coef) {
+      num.allcov   <- length(names.allcov)
+      selectedVars <- matrix(0, ncol = num.allcov, nrow = B)
+      colnames(selectedVars) <- names.allcov
+    }
+    
+    cat("Start: \n")
+    for (i in 1:B){
+      cat("\r", i)
+      # datasets and response
+      trainData <- data[rep(1:n, B_mat[,i]), ]
+      if (test_set_method == "excluded") testData  <- data[B_mat[,i] == 0, ]
+      if (test_set_method == "all") testData  <- data
+      y.train <- as.numeric(model.response(model.frame(update(model, .~1), trainData)))
+      y.test <- as.numeric(model.response(model.frame(update(model, .~1), testData)))
+      # Predicted responses
+      fitModel <- fit.method(model, data= trainData, type, ...)
+      fitted.risk.train <- fit.response(fitModel, data = trainData, type, ...)
+      fitted.risk.test <- fit.response(fitModel, data = testData, type, ...)
+      # accuracy measures
+      indices.resample[i, 1:length(perf.orig)] <- myaccuracy(fitted.risk.train, y.train, criteria)
+      indices.resample[i, (length(perf.orig)+1):(2*length(perf.orig))] <- myaccuracy(fitted.risk.test, y.test, criteria)
+      
+      if (show_selected_coef == T){
+        selectedVars[i, colnames(model.matrix(fitModel$formula, data = data))] <- 1
+      }
+    }
+  }
+  
+  
+  #browser()
+  #-- aggregate bootstrap/cv indices
+  summary.result <- apply(indices.resample, 2, function(x) mean(x, na.rm = TRUE))
+  indices[, "training"] <- summary.result[1:length(perf.orig)]
+  indices[, "test"] <- summary.result[(length(perf.orig)+1):(2*length(perf.orig))]
+  indices[, "optimism"] <- indices[, "training"] - indices[, "test"]
+  if (validation_method == "cv") indices[, "optimism"] <- indices[, "index.orig"] - indices[, "test"]
+  indices[, "index.corrected"] <- indices[, "index.orig"] - indices[, "optimism"]
+  
+  #-- final result
+  result <- list(indices = indices, indices.resample = indices.resample)
+  #add selected coefficients
+  if (show_selected_coef == T) {
+    if (colnames(selectedVars)[1] == "(Intercept)") selectedVars <- selectedVars[, -1]
+    numvar <- rowSums(selectedVars)
+    selectedVars_propChosen <- c(apply(selectedVars,2,mean), "mean.numberOfVariables" = mean(numvar), "sd.numberOfVariables" = sd(numvar))
+    selectedVars <- cbind(selectedVars, "numberOfVariables" = numvar)
+    result$selectedVars_propChosen <- selectedVars_propChosen
+    result$selectedVars.resample <- selectedVars
+  }
+  
+  # return result
+  result
+}
