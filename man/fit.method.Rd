@@ -84,9 +84,9 @@ fit.method.glmnet.cv(model, data, family = "binomial", lambda = NULL,
   lambda.min.ratio = 1e-04, ...)
 
 fit.method.glmnet.boot(model, data, family = "binomial", lambda = NULL,
-  refit = TRUE, B = 10, type.measure = "deviance", standardize = TRUE,
-  alpha = 1, krepeat = 10, nse = 1, nlambda = 100,
-  lambda.min.ratio = 1e-04, ...)
+  refit = TRUE, krepeat = 100, type.measure = "deviance",
+  standardize = TRUE, alpha = 1, nse = 1, nlambda = 100,
+  lambda.min.ratio = 1e-04, parallel = FALSE, ...)
 
 fit.method.penalized(model, data, ...)
 
