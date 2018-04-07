@@ -21,3 +21,4 @@ vector of character of label
 \description{
 Functions to get variable label
 }
+

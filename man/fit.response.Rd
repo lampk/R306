@@ -2,20 +2,20 @@
 % Please edit documentation in R/model_response_methods.R
 \name{fit.response}
 \alias{fit.response}
-\alias{fit.response.lm}
-\alias{fit.response.glm}
 \alias{fit.response.cox}
 \alias{fit.response.coxtv}
+\alias{fit.response.gam}
+\alias{fit.response.gbm}
+\alias{fit.response.glm}
 \alias{fit.response.glmnet}
 \alias{fit.response.glmnet.1se}
-\alias{fit.response.glmnet.cv}
 \alias{fit.response.glmnet.boot}
+\alias{fit.response.glmnet.cv}
+\alias{fit.response.lm}
 \alias{fit.response.penalized}
-\alias{fit.response.scad}
-\alias{fit.response.gam}
-\alias{fit.response.rpart}
 \alias{fit.response.randomForest}
-\alias{fit.response.gbm}
+\alias{fit.response.rpart}
+\alias{fit.response.scad}
 \title{Methods to get response from fitted models}
 \usage{
 fit.response(fitModel, data, type = c("lm", "glm", "glm.step.AIC",

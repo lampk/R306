@@ -2,38 +2,38 @@
 % Please edit documentation in R/model_fit_methods.R
 \name{fit.method}
 \alias{fit.method}
+\alias{fit.method.alasso}
+\alias{fit.method.cox}
+\alias{fit.method.cox.glmulti}
+\alias{fit.method.cox.glmulti.AIC}
+\alias{fit.method.cox.glmulti.BIC}
+\alias{fit.method.cox.step}
+\alias{fit.method.cox.step.AIC}
+\alias{fit.method.cox.step.BIC}
+\alias{fit.method.coxtv}
+\alias{fit.method.coxtv.step}
+\alias{fit.method.gam}
+\alias{fit.method.gbm}
+\alias{fit.method.glm}
+\alias{fit.method.glm.glmulti}
+\alias{fit.method.glm.glmulti.AIC}
+\alias{fit.method.glm.glmulti.BIC}
+\alias{fit.method.glm.step}
+\alias{fit.method.glm.step.AIC}
+\alias{fit.method.glm.step.BIC}
+\alias{fit.method.glmnet}
+\alias{fit.method.glmnet.boot}
+\alias{fit.method.glmnet.cv}
 \alias{fit.method.lm}
 \alias{fit.method.lm.step.AIC}
 \alias{fit.method.lm.step.BIC}
-\alias{fit.method.glm}
-\alias{fit.method.glm.step.AIC}
-\alias{fit.method.stab.step.AIC}
-\alias{fit.method.glm.step.BIC}
-\alias{fit.method.glm.step}
-\alias{fit.method.cox}
-\alias{fit.method.cox.step.AIC}
-\alias{fit.method.cox.step.BIC}
-\alias{fit.method.cox.step}
-\alias{fit.method.coxtv}
-\alias{fit.method.coxtv.step}
-\alias{fit.method.glmnet}
-\alias{fit.method.glmnet.cv}
-\alias{fit.method.glmnet.boot}
 \alias{fit.method.penalized}
-\alias{fit.method.alasso}
-\alias{fit.method.scad}
-\alias{fit.method.stability}
-\alias{fit.method.gam}
+\alias{fit.method.randomForest}
 \alias{fit.method.rpart1}
 \alias{fit.method.rpart2}
-\alias{fit.method.randomForest}
-\alias{fit.method.gbm}
-\alias{fit.method.glm.glmulti.AIC}
-\alias{fit.method.glm.glmulti.BIC}
-\alias{fit.method.cox.glmulti.AIC}
-\alias{fit.method.cox.glmulti.BIC}
-\alias{fit.method.glm.glmulti}
-\alias{fit.method.cox.glmulti}
+\alias{fit.method.scad}
+\alias{fit.method.stab.step.AIC}
+\alias{fit.method.stability}
 \title{Methods to fit models}
 \usage{
 fit.method(model, data, type = c("lm", "glm", "glm.step.AIC", "glm.step.BIC",
@@ -42,8 +42,7 @@ fit.method(model, data, type = c("lm", "glm", "glm.step.AIC", "glm.step.BIC",
   "stability.step.AIC", "cox", "cox.step.AIC", "cox.step.BIC", "cox.best.AIC",
   "cox.best.BIC", "glmnet.cox1", "glmnet.cox2", "rpart1", "rpart2",
   "randomForest", "gbm", "gbm.cox", "coxtv", "coxtv.step.AIC",
-  "coxtv.step.BIC"), pi = 0.8, rep = 100, size = 0.5, seed = NULL,
-  parallel = FALSE, ...)
+  "coxtv.step.BIC"), pi = 0.8, rep = 100, size = 0.5, seed = NULL, ...)
 
 fit.method.lm(model, data, ...)
 
@@ -81,7 +80,7 @@ fit.method.glmnet(model, data, family = "binomial", lambda = NULL,
 fit.method.glmnet.cv(model, data, family = "binomial", lambda = NULL,
   refit = TRUE, nfolds = 10, type.measure = "deviance",
   standardize = TRUE, alpha = 1, krepeat = 10, nse = 1, nlambda = 100,
-  lambda.min.ratio = 1e-04, ...)
+  lambda.min.ratio = 1e-04, parallel = FALSE, ...)
 
 fit.method.glmnet.boot(model, data, family = "binomial", lambda = NULL,
   refit = TRUE, krepeat = 100, type.measure = "deviance",

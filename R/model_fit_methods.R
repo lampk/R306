@@ -23,7 +23,7 @@ fit.method <- function(model, data, type = c('lm',
                                              'randomForest',
                                              'gbm', 'gbm.cox',
                                              'coxtv', 'coxtv.step.AIC', 'coxtv.step.BIC'), 
-                       pi = 0.8, rep = 100, size = 0.5, seed = NULL, parallel = FALSE, ...){
+                       pi = 0.8, rep = 100, size = 0.5, seed = NULL, ...){
   fit <- switch(type,
                 lm               = fit.method.lm(model, data, ...),
                 glm              = fit.method.glm(model, data, ...),
@@ -216,7 +216,7 @@ fit.method.glmnet <- function(model, data,
 #' @describeIn fit.method Logistic regression with LASSO (using glmnet) and refit (only for logistic regression)
 fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NULL, refit = TRUE, nfolds = 10, 
                                   type.measure = "deviance", standardize = TRUE, alpha = 1, 
-                                  krepeat = 10, nse = 1, nlambda = 100, lambda.min.ratio = 0.0001, ...) {
+                                  krepeat = 10, nse = 1, nlambda = 100, lambda.min.ratio = 0.0001, parallel = FALSE, ...) {
   #!!! be careful: not work with categorical variables, for that consider 'grouped lasso'
   
   ## function to match varnames
@@ -239,19 +239,39 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
   
   # fit glmnet model using k-fold cross-validation to choose the best tuning parameter
   ## to reduce randomness: https://stats.stackexchange.com/questions/97777/variablity-in-cv-glmnet-results
-  cvms <- NULL
-  for (i in 1:krepeat) {
-    cat("\r", i)
+  
+  if (parallel) {
+    require(doParallel)
+    cl <- makeCluster(detectCores())
+    registerDoParallel(cl)
+    err <- foreach(i = 1:krepeat,.combine = cbind) %dopar% {
+      glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
+                                      lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
+                                      standardize = standardize, alpha = alpha, ...)
+      cvmi <- data.frame(cvm = glmnet.fit$cvm)
+      names(cvmi) <- paste0("cvm", i)
+      return(cvmi)
+    }
+    stopCluster(cl)
     glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
                                     lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
                                     standardize = standardize, alpha = alpha, ...)
-    cvmi <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
-    names(cvmi)[2] <- paste0("cvm", i)
-    if (is.null(cvms)) {
-      cvms <- cvmi
-    }
-    else {
-      cvms <- merge(cvms, cvmi, by = "lambda", all = TRUE)
+    cvms <- cbind(lambda = glmnet.fit$lambda, err)
+  } else {
+    cvms <- NULL
+    for (i in 1:krepeat) {
+      cat("\r", i)
+      glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
+                                      lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
+                                      standardize = standardize, alpha = alpha, ...)
+      cvmi <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+      names(cvmi)[2] <- paste0("cvm", i)
+      if (is.null(cvms)) {
+        cvms <- cvmi
+      }
+      else {
+        cvms <- merge(cvms, cvmi, by = "lambda", all = TRUE)
+      }
     }
   }
   
@@ -341,8 +361,8 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
     cl <- makeCluster(detectCores())
     registerDoParallel(cl)
     err <- foreach(i = 1:krepeat, .combine = cbind) %dopar% {
-      x.train <- x[rep(1:n, boot_mat[,i]), , drop = FALSE]
-      y.train <- y[rep(1:n, boot_mat[,i])]
+      x.train <- x[rep(1:m, boot_mat[,i]), , drop = FALSE]
+      y.train <- y[rep(1:m, boot_mat[,i])]
       glmnet.fit <- glmnet::glmnet(x.train, y.train, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
       sapply(lambda, function(l) {
         p <- plogis(glmnet::predict.glmnet(glmnet.fit, newx = x, s = l, type = "response"))
