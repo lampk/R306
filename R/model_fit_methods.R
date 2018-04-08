@@ -239,7 +239,9 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
   
   # fit glmnet model using k-fold cross-validation to choose the best tuning parameter
   ## to reduce randomness: https://stats.stackexchange.com/questions/97777/variablity-in-cv-glmnet-results
-  
+  glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
+                                  lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
+                                  standardize = standardize, alpha = alpha, ...)
   if (parallel) {
     require(doParallel)
     cl <- makeCluster(detectCores())
@@ -253,18 +255,15 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
       return(cvmi)
     }
     stopCluster(cl)
-    glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
-                                    lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
-                                    standardize = standardize, alpha = alpha, ...)
     cvms <- cbind(lambda = glmnet.fit$lambda, err)
   } else {
     cvms <- NULL
     for (i in 1:krepeat) {
       cat("\r", i)
-      glmnet.fit <- glmnet::cv.glmnet(x, y, family = family, 
+      glmnet.fiti <- glmnet::cv.glmnet(x, y, family = family, 
                                       lambda = lambda, nfolds = nfolds, type.measure = type.measure, 
                                       standardize = standardize, alpha = alpha, ...)
-      cvmi <- data.frame(lambda = glmnet.fit$lambda, cvm = glmnet.fit$cvm)
+      cvmi <- data.frame(lambda = glmnet.fiti$lambda, cvm = glmnet.fit$cvm)
       names(cvmi)[2] <- paste0("cvm", i)
       if (is.null(cvms)) {
         cvms <- cvmi
@@ -301,7 +300,7 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
     # refit model
     out <- glm(formula = new.model, data = data, family = "binomial")
   } else {
-    out <- glmnet::cv.glmnet(x, y, family = family, lambda = lambda, nfolds = nfolds, type.measure = type.measure, standardize = standardize, alpha = alpha, ...)
+    out <- glmnet.fit
     out$model <- model
     out$s <- lambda.final
   }
@@ -399,6 +398,8 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
   idmin <- errmeans <= semin
   lambda.final <- max(lambda[idmin], na.rm = TRUE)
   
+  glmnet.fit <- glmnet::glmnet(x, y, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
+  
   if (refit) {
     coefs <- coef(glmnet.fit, s = lambda.final)
     
@@ -413,7 +414,7 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
     # refit model
     out <- glm(formula = new.model, data = data, family = "binomial")
   } else {
-    out <- glmnet::glmnet(x, y, family = family, standardize = standardize, alpha = alpha, lambda = lambda, ...)
+    out <- glmnet.fit
     out$model <- model
     out$s <- lambda.final
   }
