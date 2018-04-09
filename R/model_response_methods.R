@@ -119,7 +119,7 @@ fit.response.glmnet.cv <- function(fitModel, data, ...){
 
 #' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda)
 fit.response.glmnet.boot <- function(fitModel, data, ...){
-  glmnet::predict.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...)
+  plogis(glmnet::predict.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...))
 }
 
 #' @describeIn fit.response GLM LASSO (using penalized)
