@@ -114,12 +114,22 @@ fit.response.glmnet.1se <- function(fitModel, data, ...){
 
 #' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda)
 fit.response.glmnet.cv <- function(fitModel, data, ...){
-  glmnet::predict.cv.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...)
+  if ("glmnet" %in% class(fitModel)) {
+    output <- glmnet::predict.cv.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...)
+  } else {
+    output <- predict.glm(fitModel, newdata = data, type = "response")
+  }
+  return(output)
 }
 
 #' @describeIn fit.response GLM LASSO (using glmnet, choose the minimum lambda)
 fit.response.glmnet.boot <- function(fitModel, data, ...){
-  plogis(glmnet::predict.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...))
+  if ("glmnet" %in% class(fitModel)) {
+    output <- plogis(glmnet::predict.glmnet(fitModel, newx = model.matrix(fitModel$model, data)[, -1], type = 'response', s = fitModel$s, ...))
+  } else {
+    output <- predict.glm(fitModel, newdata = data, type = "response")
+  }
+  return(output)
 }
 
 #' @describeIn fit.response GLM LASSO (using penalized)
