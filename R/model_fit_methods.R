@@ -293,7 +293,7 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
     inter <- grepl(pattern = ":", x = selected.vars)
     if (any(inter)) {
       tmp <- selected.vars[inter]
-      selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
+      selected.vars <- unique(c(unlist(sapply(tmp, function(x) strsplit(x, split = ":"))), selected.vars))
     }
     new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
                                                               collapse = "+"))))
@@ -408,7 +408,7 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
     inter <- grepl(pattern = ":", x = selected.vars)
     if (any(inter)) {
       tmp <- selected.vars[inter]
-      selected.vars <- unique(c(selected.vars, unlist(sapply(tmp, function(x) strsplit(x, split = ":")))))
+      selected.vars <- unique(c(unlist(sapply(tmp, function(x) strsplit(x, split = ":"))), selected.vars))
     }
     new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
     # refit model
