@@ -290,9 +290,10 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
     
     # get selected variables
     selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
-    tmp <- grepl(pattern = ":", x = selected.vars)
-    selected.vars2 <- c(selected.vars[tmp], selected.vars[!tmp])
-    selected.vars2 <- gsub(pattern = ":", replacement = "*", x = selected.vars2)
+    idx <- grepl(pattern = ":", x = selected.vars)
+    tmp <- reformulate(selected.vars)
+    selected.vars2 <- c(na.omit(all.vars(tmp)[match(all.vars(model)[-1], all.vars(tmp))]),
+                        selected.vars[idx])
     # refit model
     out <- glm(formula = update(model, reformulate(selected.vars2, response = ".")), data = data, family = "binomial")
   } else {
@@ -401,9 +402,10 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
     
     # get selected variables
     selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
-    tmp <- grepl(pattern = ":", x = selected.vars)
-    selected.vars2 <- c(selected.vars[tmp], selected.vars[!tmp])
-    selected.vars2 <- gsub(pattern = ":", replacement = "*", x = selected.vars2)
+    idx <- grepl(pattern = ":", x = selected.vars)
+    tmp <- reformulate(selected.vars)
+    selected.vars2 <- c(na.omit(all.vars(tmp)[match(all.vars(model)[-1], all.vars(tmp))]),
+                        selected.vars[idx])
     # refit model
     out <- glm(formula = update(model, reformulate(selected.vars2, response = ".")), data = data, family = "binomial")
   } else {
