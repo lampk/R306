@@ -290,13 +290,8 @@ fit.method.glmnet.cv <- function (model, data, family = "binomial", lambda = NUL
     
     # get selected variables
     selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
-    inter <- grepl(pattern = ":", x = selected.vars)
-    if (any(inter)) {
-      tmp <- selected.vars[inter]
-      selected.vars <- unique(c(unlist(sapply(tmp, function(x) strsplit(x, split = ":"))), selected.vars))
-    }
-    new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, 
-                                                              collapse = "+"))))
+    selected.vars <- gsub(pattern = ":", replacement = "*", x = selected.vars)
+    new.model <- update(model, reformulate(selected.vars, response = "."))
     # refit model
     out <- glm(formula = new.model, data = data, family = "binomial")
   } else {
@@ -405,12 +400,8 @@ fit.method.glmnet.boot <- function (model, data, family = "binomial", lambda = N
     
     # get selected variables
     selected.vars <- match.varname(varname = coefs@Dimnames[[1]][coefs@i + 1], model = model)
-    inter <- grepl(pattern = ":", x = selected.vars)
-    if (any(inter)) {
-      tmp <- selected.vars[inter]
-      selected.vars <- unique(c(unlist(sapply(tmp, function(x) strsplit(x, split = ":"))), selected.vars))
-    }
-    new.model <- update(model, as.formula(paste(". ~ ", paste(selected.vars, collapse = "+"))))
+    selected.vars <- gsub(pattern = ":", replacement = "*", x = selected.vars)
+    new.model <- update(model, reformulate(selected.vars, response = "."))
     # refit model
     out <- glm(formula = new.model, data = data, family = "binomial")
   } else {
