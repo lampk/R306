@@ -213,7 +213,16 @@ classValidation.new <- function(model, data, type, scope=NULL,
       
       if (show_selected_coef){
         selectedVars.i <- matrix(rep(NA, 3), dimnames = list(NULL, num.allcov), nrow = 1)
-        selectedVars.i[, colnames(model.matrix(fitModel$formula, data = data))] <- 1
+        if ("glm" %in% class(fitModel)) {
+          selectedVars.i[, colnames(model.matrix(fitModel$formula, data = data))] <- 1
+        } else {
+          if ("glmnet" %in% class(fitModel)) {
+            coefs <- coef(fitModel, s = fitModel$s)
+            selectedVars.i[, coefs@Dimnames[[1]][coefs@i + 1]] <- 1
+          } else {
+            selectedVars.i <- NA
+          }
+        }
         out <- list(indices.resample.i, selectedVars.i)
       } else {
         out <- indices.resample.i
@@ -263,7 +272,17 @@ classValidation.new <- function(model, data, type, scope=NULL,
       indices.resample[i, (length(perf.orig)+1):(2*length(perf.orig))] <- myaccuracy(fitted.risk.test, y.test, criteria)
       
       if (show_selected_coef == T){
-        selectedVars[i, colnames(model.matrix(fitModel$formula, data = data))] <- 1
+        if ("glm" %in% class(fitModel)) {
+          selectedVars[i, colnames(model.matrix(fitModel$formula, data = data))] <- 1
+        } else {
+          if ("glmnet" %in% class(fitModel)) {
+            coefs <- coef(fitModel, s = fitModel$s)
+            selectedVars[i, coefs@Dimnames[[1]][coefs@i + 1]] <- 1
+          } else {
+            selectedVars[i,] <- NA
+          }
+        }
+        
       }
     }
   }
